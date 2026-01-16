@@ -28,25 +28,29 @@ Otherwise:
    取消
 `
 );
-            navigator.mediaDevices.getUserMedia(
-                {
-                    audio:false,
-                    video:{
-                        width:{
-                            ideal:3840
-                        },
-                        height:{
-                            ideal:2160
-                        },
-                        facingMode:{
-                            exact:"environment"
+        document.body.requestFullscreen().then(
+            () => {
+                return navigator.mediaDevices.getUserMedia(
+                    {
+                        audio:false,
+                        video:{
+                            width:{
+                                ideal:3840
+                            },
+                            height:{
+                                ideal:2160
+                            },
+                            facingMode:{
+                                exact:"environment"
+                            }
                         }
-                    }
-                }
-            ).then(
+                     }
+                 );
+            }
+        ).then(
                 (stream) => {
                     maxsize_stream(stream);
-
+                    
                     left.srcObject = stream;
                     right.srcObject = stream;
 
@@ -117,7 +121,7 @@ Otherwise:
                 }
             ).catch(
                 (err) => {
-                    alert(`Cannot use the Camera, due to:\n${err}`);
+                    alert(`Catch the Fatal Error:\n${err}`);
                 }
             );
 
@@ -353,6 +357,7 @@ onload="init(
     </svg>
 
 </body>
+
 
 
 
