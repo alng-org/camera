@@ -8,16 +8,19 @@
     maximum-scale=1.0
     user-scalable=no">
     <script>
-        function init(left,right,mleft,mright,canvas,info){
-            alert(
-`​​\
+
+
+        function boot(left,right,mleft,mright,canvas,info){
+            info.innerText =
+`\
 1. Press viewfinder at any point A
-2. ​Move phone horizontally to B (the first point different than A)
-​3. Finally release at C
-4. ​If B and C are on the same side of A:
+2. Move phone horizontally to B (the first point different than A)
+3. Finally release at C
+4. If B and C are on the same side of A:
    Save the photo
 Otherwise:
    Cancel
+>>> Press Any Where to Continue
 ===============
 1、在任意 A 点按住取景器
 2、水平移动手机至 B 点（B 为异于 A 的首个位置）
@@ -26,9 +29,23 @@ Otherwise:
    保存照片
 否则：
    取消
-`
-);
-        document.body.requestFullscreen().then(
+>>> 点击任意位置继续
+`;
+            document.body.addEventListener(
+                "click",
+                (e) => {
+                    init(left,right,mleft,mright,canvas,info);
+                },
+                {
+                    once: true
+                }
+            );
+        }
+
+        function init(left,right,mleft,mright,canvas,info){
+            info.innerText = ``;
+                
+            document.body.requestFullscreen().then(
             () => {
                 return navigator.mediaDevices.getUserMedia(
                     {
@@ -333,7 +350,7 @@ Otherwise:
     </style>
 </head>
 <body 
-onload="init(
+onload="boot(
     document.getElementById('left'),
     document.getElementById('right'),
     document.getElementById('mleft'),
@@ -357,6 +374,7 @@ onload="init(
     </svg>
 
 </body>
+
 
 
 
