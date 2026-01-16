@@ -33,13 +33,10 @@ Otherwise:
                     audio:false,
                     video:{
                         width:{
-                            ideal:3840
+                            ideal:Number.MAX_SAFE_INTEGER//3840
                         },
                         height:{
-                            ideal:2160
-                        },
-                        zoom:{
-                            ideal:1.0
+                            ideal:Number.MAX_SAFE_INTEGER//2160
                         },
                         facingMode:{
                             exact:"environment"
@@ -338,6 +335,7 @@ onload="init(
     </svg>
 
 </body>
+
 
 
 
