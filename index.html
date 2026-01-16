@@ -12,9 +12,9 @@
 
         function boot(left,right,mleft,mright,canvas,info){
             if(
-                navigator.language === `zh`
+                navigator.language === `zh-CN`
             ){
-                //中文环境
+                //简体中文
                 info.innerText = `\
 1、在任意 A 点按住取景器
 2、水平移动手机至 B 点（B 为异于 A 的首个位置）
@@ -322,7 +322,7 @@ Otherwise:
             height:100dvh;
             object-fit: contain;
         }
-        video,h1{
+        video,#info{
             position: fixed;
             left: 50%;
             top: 50%;
@@ -340,7 +340,7 @@ Otherwise:
             opacity: 0.5;
             mix-blend-mode: screen;
         }
-        h1{
+        #info{
             z-index:3;
             pointer-events: none;
             color: white;
@@ -365,7 +365,7 @@ onload="boot(
     document.getElementById('info')
     )">
     <video id="left" autoplay></video>
-    <h1 id="info"></h1>
+    <div id="info"></div>
     <video id="right" autoplay></video>
     <canvas id="img_canvas"></canvas>
     <svg>
@@ -380,6 +380,7 @@ onload="boot(
     </svg>
 
 </body>
+
 
 
 
