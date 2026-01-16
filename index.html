@@ -134,13 +134,14 @@ Otherwise:
                 cheight !== undefined &&
                 czoom !== undefined
             ){
-
-                alert('here');
-                
                 track.applyConstraints(
                     {
                         width: cwidth,
-                        height: cheight,
+                        height: cheight
+                    }
+                );
+                track.applyConstraints(
+                    {
                         advanced: [
                             {
                                 zoom: czoom
@@ -348,6 +349,7 @@ onload="init(
     </svg>
 
 </body>
+
 
 
 
