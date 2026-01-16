@@ -33,10 +33,10 @@ Otherwise:
                     audio:false,
                     video:{
                         width:{
-                            ideal:Number.MAX_SAFE_INTEGER//3840
+                            ideal:3840
                         },
                         height:{
-                            ideal:Number.MAX_SAFE_INTEGER//2160
+                            ideal:2160
                         },
                         facingMode:{
                             exact:"environment"
@@ -128,11 +128,21 @@ Otherwise:
             let cap = track.getCapabilities();
             let cwidth = cap.width?.max;
             let cheight = cap.height?.max;
-            if(cwidth !== undefined && cheight !== undefined){
+            let czoom = cap.zoom?.min;
+            if(
+                cwidth !== undefined &&
+                cheight !== undefined &&
+                czoom !== undefined
+            ){
                 track.applyConstraints(
                     {
-                        width:cwidth,
-                        height:cheight
+                        width: cwidth,
+                        height: cheight,
+                        advanced: [
+                            {
+                                zoom: czoom
+                            }
+                        ]
                     }
                 );
             }else{
@@ -335,6 +345,7 @@ onload="init(
     </svg>
 
 </body>
+
 
 
 
