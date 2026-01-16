@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<head>
+    <meta name="viewport" content="
+    width=device-width
+    height=device-height
+    initial-scale=1.0
+    minimum-scale=1.0
+    maximum-scale=1.0
+    user-scalable=no">
+    <script>
+        function init(left,right,mleft,mright,canvas,info){
+            navigator.mediaDevices.getUserMedia(
+                {
+                    audio:false,
+                    video:{
+                        width:{
+                            ideal:3840
+                        },
+                        height:{
+                            ideal:2160
+                        },
+                        facingMode:"enviroment"
+                    }
+                }
+            ).then(
+                (stream) => {
+                    maxsize_stream(stream);
+
+                    left.srcObject = stream;
+                    right.srcObject = stream;
+
+                    right.addEventListener(
+                        "click",
+                        (event) =>{
+                            console.log("click");
+                        }
+                    );
+
+                    let fabstract = (begin_event,move_event,end_event) => {
+                        let X = (event) => event?.changedTouches?.[0].clientX ?? event.clientX;
+                        right.addEventListener(
+                            begin_event,
+                            (begin) => {
+                                right.addEventListener(
+                                    move_event,
+                                    (move) =>{
+                                        let dx = X(move) - X(begin);
+                                        let cabstract = (first,second) => {
+                                            before_grab(stream,canvas,mleft,mright);
+                                            grab(stream,canvas,first);
+                                            right.addEventListener(
+                                                end_event,
+                                                (end) => {
+                                                    let dX = X(end) - X(begin);
+                                                    grab(stream,canvas,second);
+                                                    if(dX * dx > 0){
+                                                        //same direction
+                                                        saved_img(canvas);
+                                                    }else{
+                                                        //cancel saved
+                                                    }
+                                                    after_grab(first,second,mleft,mright);
+                                                },
+                                                {
+                                                    once:true
+                                                }
+                                            );
+                                        };
+                                        if(dx < 0){
+                                            //right first
+                                            cabstract(right,left);
+                                        }else if(dx > 0){
+                                            //left first
+                                            cabstract(left,right);
+                                        }else{
+                                            //cancel grab
+                                        }
+                                    },
+                                    {
+                                        once : true
+                                    }
+                                );
+                            }
+                        );
+                    };
+                    fabstract("mousedown","mousemove","mouseup");
+                    fabstract("touchstart","touchmove","touchend");
+                }
+            ).catch(
+                (err) => {
+                    alert(`Cannot use the Camera, due to:\n${err}`);
+                }
+            );
+
+        }
+
+        function maxsize_stream(stream){
+            let track = stream.getVideoTracks()[0];
+            let cap = track.getCapabilities();
+            let cwidth = cap.width?.max;
+            let cheight = cap.height?.max;
+            if(cwidth !== undefined && cheight !== undefined){
+                track.applyConstraints(
+                    {
+                        width:cwidth,
+                        height:cheight
+                    }
+                );
+            }else{
+                //PASS
+            }
+        }
+
+        function info_left(info){
+            info.innerText = "O _ <";
+        }
+
+        function info_right(info){
+            info.innerText = "> _ O";
+        }
+
+        function info_ok(info){
+            info.innerText = "> _ <";
+        }
+
+        function original(mleft,mright){
+            mleft.setAttribute(
+                "values",
+                color_matrix(
+                    color_vec(1,0,0,0,0),
+                    color_vec(0,1,0,0,0),
+                    color_vec(0,0,1,0,0),
+                    color_vec(0,0,0,1,0)
+                )
+            );
+            mright.setAttribute(
+                "values",
+                color_matrix(
+                    color_vec(1,0,0,0,0),
+                    color_vec(0,1,0,0,0),
+                    color_vec(0,0,1,0,0),
+                    color_vec(0,0,0,1,0)
+                )
+            );
+        }
+        
+        function dubois(mleft,mright){
+            //the matrix of the Dubois Anaglyph
+            mleft.setAttribute(
+                "values",
+                color_matrix(
+                    color_vec(0.456,0.5,0.176,0,0),
+                    color_vec(0,0,0,0,0),
+                    color_vec(0,0,0,0,0),
+                    color_vec(0,0,0,1,0)
+                )
+            );
+            mright.setAttribute(
+                "values",
+                color_matrix(
+                    color_vec(-0.043,-0.088,-0.002,0,0),
+                    color_vec(0.378,0.734,-0.018,0,0),
+                    color_vec(-0.072,0.212,1.131,0,-0.1),
+                    color_vec(0,0,0,1,0)
+                )
+            );
+        }
+
+        function color_vec(red_percent,green_percent,blue_percent,alpha_percent,offset){
+            return `${red_percent} ${green_percent} ${blue_percent} ${alpha_percent} ${offset}`;
+        }
+
+        function color_matrix(new_red,new_green,new_blue,new_alpha){
+            return `${new_red} ${new_green} ${new_blue} ${new_alpha}`;
+        }
+        
+
+        function before_grab(stream,canvas,mleft,mright){
+            let track = stream.getVideoTracks()[0];
+            canvas.width = track.getSettings().width;
+            canvas.height = track.getSettings().height;
+            dubois(mleft,mright);
+        }
+
+        function transform_mix(mix){
+            if(mix === "normal"){
+                return "source-over";
+            }else{
+                return mix;
+            }
+        }
+
+        function grab(stream,canvas,video){
+            let track = stream.getVideoTracks()[0];
+            let imgc = new ImageCapture(track);
+            let ctx = canvas.getContext("2d");
+            return imgc.grabFrame().then(
+                    (img) => {
+                        let after = video.pause();
+                        ctx.filter = window.getComputedStyle(video).filter;
+                        ctx.globalCompositeOperation = transform_mix(window.getComputedStyle(video).mixBlendMode);
+                        ctx.globalAlpha = window.getComputedStyle(video).opacity;
+                        ctx.drawImage(img, 0, 0);
+                        img.close();
+                        return after;
+                    }
+                ).catch(
+                    (err) => {
+                        alert(`Cannot Capture an Image from the Camera, due to:\n${err}`);
+                    }
+                );
+        }
+
+        function after_grab(left,right,mleft,mright){
+            left.play().then(
+                () => {
+                    right.play().then(
+                        () => {
+                            //ensure left and right is playing
+                            original(mleft,mright);
+                        }
+                    );
+                }
+            );
+        }
+
+        function saved_img(canvas){
+            let img = canvas.toDataURL("image/png",1.0);
+            let a = document.createElement("a");
+            a.href = img;
+            a.download = `3D_Image [${new Date().getTime()}]`;
+            a.click();
+        }
+    
+    
+    
+    </script>
+    <style>
+        video,h1{
+            position: fixed;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%,-50%);
+        }
+        #left{
+            z-index: 1;
+            filter: url(#fleft);
+            opacity: 1;
+            mix-blend-mode: normal;
+        }
+        #right{
+            z-index: 2;
+            filter: url(#fright);
+            opacity: 0.5;
+            mix-blend-mode: screen;
+        }
+        h1{
+            z-index:3;
+            pointer-events: none;
+            color: white;
+            opacity: 0.5;
+            font-family: emoji;
+        }
+        body{
+            background-color: black;
+        }
+        svg,canvas{
+            display: none;
+        }
+    </style>
+</head>
+<body 
+onload="init(
+    document.getElementById('left'),
+    document.getElementById('right'),
+    document.getElementById('mleft'),
+    document.getElementById('mright'),
+    document.getElementById('img_canvas'),
+    document.getElementById('info')
+    )">
+    <video id="left" autoplay></video>
+    <h1 id="info"></h1>
+    <video id="right" autoplay></video>
+    <canvas id="img_canvas"></canvas>
+    <svg>
+        <defs>
+            <filter id="fleft">
+                <feColorMatrix type="matrix" id= "mleft"/>                
+            </filter>
+            <filter id="fright">
+                <feColorMatrix type="matrix" id = "mright"/>                
+            </filter>
+        </defs>
+    </svg>
+</body>
