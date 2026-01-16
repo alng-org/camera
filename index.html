@@ -9,6 +9,25 @@
     user-scalable=no">
     <script>
         function init(left,right,mleft,mright,canvas,info){
+            alert(
+`​​\
+1. Press viewfinder at any point A
+2. ​Move phone horizontally to B (the first point different than A)
+​3. Finally release at C
+4. ​If B and C are on the same side of A:
+   Save the photo
+Otherwise:
+   Cancel
+===============
+1、在任意 A 点按住取景器
+2、水平移动手机至 B 点（B 为异于 A 的首个位置）
+3、最后在 C 点松手
+4、若 B 与 C 位于 A 的同侧：
+   保存照片
+否则：
+   取消
+`
+);
             navigator.mediaDevices.getUserMedia(
                 {
                     audio:false,
@@ -292,4 +311,5 @@ onload="init(
             </filter>
         </defs>
     </svg>
+
 </body>
