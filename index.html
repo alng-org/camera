@@ -137,14 +137,18 @@ Otherwise:
                 track.applyConstraints(
                     {
                         width: cwidth,
-                        height: cheight
+                        height: cheight,
+                        resizeMode: "none"
                     }
                 );
                 track.applyConstraints(
                     {
                         advanced: [
                             {
-                                zoom: czoom
+                                zoom: czoom,
+                                whiteBalanceMode: "continuous",
+                                exposureMode: "continuous",
+                                focusMode: "continuous"
                             }
                         ]
                     }
@@ -349,6 +353,7 @@ onload="init(
     </svg>
 
 </body>
+
 
 
 
