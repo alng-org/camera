@@ -81,9 +81,10 @@ Otherwise:
                                                             }else{
                                                                //cancel saved
                                                             }
-                                                            after_grab(first,second,mleft,mright);
+                                                            //after_grab(first,second,mleft,mright);
                                                         }
                                                     );
+                                                    after_grab(first,second,mleft,mright);
                                                 },
                                                 {
                                                     once:true
@@ -218,14 +219,17 @@ Otherwise:
             let track = stream.getVideoTracks()[0];
             let imgc = new ImageCapture(track);
             let ctx = canvas.getContext("2d");
+            let filter = window.getComputedStyle(video).filter;
+            let mix_mode =  transform_mix(window.getComputedStyle(video).mixBlendMode);
+            let opacity = window.getComputedStyle(video).opacity;
             return imgc.grabFrame().then(
                     (img) => {
                         video.pause();
                         return before.then(
                             (_) => {
-                                ctx.filter = window.getComputedStyle(video).filter;
-                                ctx.globalCompositeOperation = transform_mix(window.getComputedStyle(video).mixBlendMode);
-                                ctx.globalAlpha = window.getComputedStyle(video).opacity;
+                                ctx.filter = filter;
+                                ctx.globalCompositeOperation = mix_mode;
+                                ctx.globalAlpha = opacity;
                                 ctx.drawImage(img, 0, 0);
                                 img.close();
                                 return null;
@@ -322,5 +326,6 @@ onload="init(
     </svg>
 
 </body>
+
 
 
