@@ -78,13 +78,17 @@ Otherwise:
                                                         grab(stream,canvas,second,await_draw_first).then(
                                                             (_) => {
                                                                 saved_img(canvas);
-                                                                //after_grab(first,second,mleft,mright);
+                                                                after_grab(first,second,mleft,mright);
                                                             }
                                                         );
                                                     }else{
                                                         //cancel saved
+                                                        await_draw_first.then(
+                                                            (_) => {
+                                                                after_grab(first,second,mleft,mright);
+                                                            }
+                                                        );  
                                                     }
-                                                    after_grab(first,second,mleft,mright);
                                                 },
                                                 {
                                                     once:true
@@ -331,6 +335,7 @@ onload="init(
     </svg>
 
 </body>
+
 
 
 
