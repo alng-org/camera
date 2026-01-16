@@ -73,17 +73,17 @@ Otherwise:
                                                 end_event,
                                                 (end) => {
                                                     let dX = X(end) - X(begin);
-                                                    grab(stream,canvas,second,await_draw_first).then(
-                                                        (_) => {
-                                                            if(dX * dx > 0){
-                                                               //same direction
-                                                               saved_img(canvas);
-                                                            }else{
-                                                               //cancel saved
+                                                    if(dX * dx > 0){
+                                                        //same direction
+                                                        grab(stream,canvas,second,await_draw_first).then(
+                                                            (_) => {
+                                                                saved_img(canvas);
+                                                                //after_grab(first,second,mleft,mright);
                                                             }
-                                                            //after_grab(first,second,mleft,mright);
-                                                        }
-                                                    );
+                                                        );
+                                                    }else{
+                                                        //cancel saved
+                                                    }
                                                     after_grab(first,second,mleft,mright);
                                                 },
                                                 {
@@ -92,11 +92,11 @@ Otherwise:
                                             );
                                         };
                                         if(dx < 0){
-                                            //right first
-                                            cabstract(right,left);
-                                        }else if(dx > 0){
                                             //left first
                                             cabstract(left,right);
+                                        }else if(dx > 0){
+                                            //right first
+                                            cabstract(right,left);
                                         }else{
                                             //cancel grab
                                         }
@@ -273,6 +273,7 @@ Otherwise:
             left: 50%;
             top: 50%;
             transform: translate(-50%,-50%);
+            object-fit: contain;
         }
         #left{
             z-index: 1;
@@ -326,6 +327,7 @@ onload="init(
     </svg>
 
 </body>
+
 
 
 
