@@ -132,14 +132,14 @@ Otherwise:
                                                         grab(stream,canvas,second,img_obj.second, await_draw_first).then(
                                                             (_) => {
                                                                 saved_img(canvas);
-                                                                after_grab(first,second,mleft,mright);
+                                                                after_grab(first,second,mleft,mright,info);
                                                             }
                                                         );
                                                     }else{
                                                         //cancel saved
                                                         await_draw_first.then(
                                                             (_) => {
-                                                                after_grab(first,second,mleft,mright);
+                                                                after_grab(first,second,mleft,mright,info);
                                                             }
                                                         );  
                                                     }
@@ -268,12 +268,14 @@ Otherwise:
             e.style.opacity = opacity;
             e.style.mixBlendMode = mix_blend_mode;
             return (img) => {
-                //necessary attributes
-                opacity: opacity,
-                mix_blend_mode: mix_blend_mode,
-                filter: window.getComputedStyle(video).filter,
-                // the image data
-                img: img
+                return {
+                    //necessary attributes
+                    opacity: opacity,
+                    mix_blend_mode: mix_blend_mode,
+                    filter: window.getComputedStyle(e).filter,
+                    // the image data
+                    img: img
+                };
             };
         }
         function before_grab(stream,canvas,mleft,mright,first,second){
@@ -307,7 +309,7 @@ Otherwise:
                         return before.then(
                             (_) => {
                                 ctx.filter = img_value.filter;
-                                ctx.globalCompositeOperation = img_value.mix_blend_mode;
+                                ctx.globalCompositeOperation = transform_mix(img_value.mix_blend_mode);
                                 ctx.globalAlpha = img_value.opacity;
                                 ctx.drawImage(img_value.img, 0, 0);
                                 img_value.img.close();
@@ -322,7 +324,7 @@ Otherwise:
                 );
         }
 
-        function after_grab(left,right,mleft,mright){
+        function after_grab(left,right,mleft,mright,info){
             left.play().then(
                 () => {
                     right.play().then(
@@ -412,6 +414,7 @@ onload="boot(
     </svg>
 
 </body>
+
 
 
 
