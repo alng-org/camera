@@ -9,7 +9,6 @@
     user-scalable=no">
     <script>
 
-
         function boot(left,right,mleft,mright,canvas,info){
             if(
                 navigator.language === `zh-CN`
@@ -100,8 +99,8 @@ Otherwise:
                                     (move) =>{
                                         let dx = X(move) - X(begin);
                                         let cabstract = (first,second,notice_info) => {
-                                            before_grab(stream,canvas,mleft,mright);
-                                            let await_draw_first = grab(stream,canvas,first);
+                                            let img_obj = before_grab(stream,canvas,mleft,mright,first,second);
+                                            let await_draw_first = grab(stream,canvas,first,img_obj.first);
                                             let pmove = (move_p) =>{
                                                 let dy = Y(move_p) - Y(begin);
                                                 let eps = 10;
@@ -130,7 +129,7 @@ Otherwise:
                                                     let dX = X(end) - X(begin);
                                                     if(dX * dx > 0){
                                                         //same direction
-                                                        grab(stream,canvas,second,await_draw_first).then(
+                                                        grab(stream,canvas,second,img_obj.second, await_draw_first).then(
                                                             (_) => {
                                                                 saved_img(canvas);
                                                                 after_grab(first,second,mleft,mright);
@@ -263,13 +262,30 @@ Otherwise:
         function color_matrix(new_red,new_green,new_blue,new_alpha){
             return `${new_red} ${new_green} ${new_blue} ${new_alpha}`;
         }
-        
 
-        function before_grab(stream,canvas,mleft,mright){
+        function update_css(e,z_index,opacity,mix_blend_mode){
+            e.style.zIndex = z_index;
+            e.style.opacity = opacity;
+            e.style.mixBlendMode = mix_blend_mode;
+            return (img) => {
+                //necessary attributes
+                opacity: opacity,
+                mix_blend_mode: mix_blend_mode,
+                filter: window.getComputedStyle(video).filter,
+                // the image data
+                img: img
+            };
+        }
+        function before_grab(stream,canvas,mleft,mright,first,second){
             let track = stream.getVideoTracks()[0];
             canvas.width = track.getSettings().width;
             canvas.height = track.getSettings().height;
             dubois(mleft,mright);
+            return {
+                first: update_css(first,1,1,"normal"),
+                second: update_css(second,2,0.5,"screen")
+            };
+            
         }
 
         function transform_mix(mix){
@@ -280,23 +296,21 @@ Otherwise:
             }
         }
 
-        function grab(stream,canvas,video,before = Promise.resolve(null)){
+        function grab(stream,canvas,video,img_lambda,before = Promise.resolve(null)){
             let track = stream.getVideoTracks()[0];
             let imgc = new ImageCapture(track);
             let ctx = canvas.getContext("2d");
-            let filter = window.getComputedStyle(video).filter;
-            let mix_mode =  transform_mix(window.getComputedStyle(video).mixBlendMode);
-            let opacity = window.getComputedStyle(video).opacity;
             return imgc.grabFrame().then(
                     (img) => {
                         video.pause();
+                        let img_value = img_lambda(img);
                         return before.then(
                             (_) => {
-                                ctx.filter = filter;
-                                ctx.globalCompositeOperation = mix_mode;
-                                ctx.globalAlpha = opacity;
-                                ctx.drawImage(img, 0, 0);
-                                img.close();
+                                ctx.filter = img_value.filter;
+                                ctx.globalCompositeOperation = img_value.mix_blend_mode;
+                                ctx.globalAlpha = img_value.opacity;
+                                ctx.drawImage(img_value.img, 0, 0);
+                                img_value.img.close();
                                 return null;
                             }
                         );
@@ -347,13 +361,13 @@ Otherwise:
         #left{
             z-index: 1;
             filter: url(#fleft);
-            opacity: 0.6;
+            opacity: 1;
             mix-blend-mode: normal;
         }
         #right{
             z-index: 2;
             filter: url(#fright);
-            opacity: 0.6;
+            opacity: 0.5;
             mix-blend-mode: screen;
         }
         #info{
@@ -398,6 +412,7 @@ onload="boot(
     </svg>
 
 </body>
+
 
 
 
