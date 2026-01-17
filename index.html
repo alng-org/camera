@@ -92,10 +92,10 @@ Otherwise:
                     let fabstract = (begin_event,move_event,end_event) => {
                         let X = (event) => event?.changedTouches?.[0].clientX ?? event.clientX;
                         let Y = (event) => event?.changedTouches?.[0].clientY ?? event.clientY;
-                        right.addEventListener(
+                        document.body.addEventListener(
                             begin_event,
                             (begin) => {
-                                right.addEventListener(
+                                document.body.addEventListener(
                                     move_event,
                                     (move) =>{
                                         let dx = X(move) - X(begin);
@@ -115,14 +115,14 @@ Otherwise:
                                                     notice_info(INFO.CAPTURING);
                                                 }
                                             };
-                                            right.addEventListener(
+                                            document.body.addEventListener(
                                                 move_event,
                                                 pmove
                                             );
-                                            right.addEventListener(
+                                            document.body.addEventListener(
                                                 end_event,
                                                 (end) => {
-                                                    right.removeEventListener(
+                                                    document.body.removeEventListener(
                                                         move_event,
                                                         pmove
                                                     );
@@ -336,6 +336,7 @@ Otherwise:
             width:100dvw;
             height:100dvh;
             object-fit: contain;
+            pointer-events: none;
         }
         video,#info{
             position: fixed;
@@ -397,5 +398,6 @@ onload="boot(
     </svg>
 
 </body>
+
 
 
