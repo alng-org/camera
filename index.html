@@ -14,27 +14,10 @@
                 navigator.language === `zh-CN`
             ){
                 //简体中文
-                info.innerText = `\
-1、在任意 A 点按住取景器
-2、水平移动手机至 B 点（B 为异于 A 的首个位置）
-3、最后在 C 点松手
-4、若 B 与 C 位于 A 的同侧：
-   保存照片
-否则：
-   取消
->>> 点击任意位置继续`;
+                info.innerText = `开发中...`;
             }else{
                 //Global
-                info.innerText =`\
-1. Press viewfinder at any point A
-2. Move phone horizontally to B (the first point different than A)
-3. Finally release at C
-4. If B and C are on the same side of A:
-   Save the photo
-Otherwise:
-   Cancel
->>> Press Any Where to Continue
-`;
+                info.innerText =`Devloping...`;
             }
             document.body.addEventListener(
                 "click",
@@ -87,88 +70,33 @@ Otherwise:
                     right.srcObject = stream;
 
                     update_info(info,INFO.CAPTURING,INFO.CAPTURING);
+                    document.body.addEventListener(
+                        "click",
+                        (e) => {
+                            update_info(info,INFO.CAPTURED,INFO.CAPTURED);
+                            
+                            let first = right;
+                            let second = left;
+                            let vibrate_for_second = 120;
+                            let delay_capture_second = 120;
 
-                    let fabstract = (begin_event,move_event,end_event) => {
-                        let X = (event) => event?.changedTouches?.[0].clientX ?? event.clientX;
-                        let Y = (event) => event?.changedTouches?.[0].clientY ?? event.clientY;
-                        document.body.addEventListener(
-                            begin_event,
-                            (begin) => {
-                                document.body.addEventListener(
-                                    move_event,
-                                    (move) =>{
-                                        let dx = X(move) - X(begin);
-                                        let cabstract = (first,second,notice_info) => {
-                                            let img_obj = before_grab(stream,canvas,mleft,mright,first,second);
-                                            let await_draw_first = grab(stream,canvas,first,img_obj.first);
-                                            let pmove = (move_p) =>{
-                                                let dy = Y(move_p) - Y(begin);
-                                                let eps = 10;
-                                                if(dy < -eps){
-                                                    //device down
-                                                    notice_info(INFO.UPTO);
-                                                }else if(dy > eps){
-                                                    //device up
-                                                    notice_info(INFO.DOWNTO);
-                                                }else{
-                                                    notice_info(INFO.CAPTURING);
-                                                }
-                                            };
-                                            document.body.addEventListener(
-                                                move_event,
-                                                pmove
-                                            );
-                                            document.body.addEventListener(
-                                                end_event,
-                                                (end) => {
-                                                    document.body.removeEventListener(
-                                                        move_event,
-                                                        pmove
-                                                    );
-                                                    notice_info(INFO.CAPTURED);
-                                                    let dX = X(end) - X(begin);
-                                                    if(dX * dx > 0){
-                                                        //same direction
-                                                        grab(stream,canvas,second,img_obj.second, await_draw_first).then(
-                                                            (_) => {
-                                                                saved_img(canvas);
-                                                                after_grab(first,second,mleft,mright,info);
-                                                            }
-                                                        );
-                                                    }else{
-                                                        //cancel saved
-                                                        await_draw_first.then(
-                                                            (_) => {
-                                                                after_grab(first,second,mleft,mright,info);
-                                                            }
-                                                        );  
-                                                    }
-                                                },
-                                                {
-                                                    once:true
-                                                }
-                                            );
-                                        };
-                                        if(dx < 0){
-                                            //left first
-                                            cabstract(left,right,(foo) => update_info(info,INFO.CAPTURED,foo));
-                                        }else if(dx > 0){
-                                            //right first
-                                            cabstract(right,left,(foo) => update_info(info,foo,INFO.CAPTURED));
-                                        }else{
-                                            //cancel grab
+                            
+                            let img_obj = before_grab(stream,canvas,mleft,mright,first,second);
+                            let await_draw_first = grab(stream,canvas,first,img_obj.first);
+                            navigator.vibrate(vibrate_for_second);
+                            setTimeout(
+                                () => {
+                                    grab(stream,canvas,second,img_obj.second, await_draw_first).then(
+                                        (_) => {
+                                            saved_img(canvas);
+                                            after_grab(first,second,mleft,mright,info);
                                         }
-                                    },
-                                    {
-                                        once : true
-                                    }
-                                );
-                            }
-                        );
-                    };
-                    fabstract("mousedown","mousemove","mouseup");
-                    fabstract("touchstart","touchmove","touchend");
-                }
+                                    )
+                                },
+                                delay_capture_second
+                            );
+                        }
+                    );
             ).catch(
                 (err) => {
                     alert(`Catch the Fatal Error:\n${err}`);
@@ -416,6 +344,7 @@ onload="boot(
     </svg>
 
 </body>
+
 
 
 
