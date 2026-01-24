@@ -122,7 +122,7 @@
                  );
             }
         ).then(
-                (stream) => maxsize_stream(stream)
+                (stream) => maxsize_stream(stream,canvas)
         ).then(
                 (tools) => {
                     let c = new rAF(tools);
@@ -161,6 +161,8 @@
                     }
                 ).then(
                     () => {
+                        canvas.width = cwidth;
+                        canvas.height = cheight;
                         let imgc = new ImageCapture(track);
                         return {
                             gFrame: (f)  => imgc.grabFrame().then(f).catch(
@@ -205,6 +207,9 @@
         }
         canvas{
             z-index:1;
+            width:100dvw;
+            height:100dvh;
+            object-fit: contain;
         }
         #info{
             z-index:2;
@@ -230,4 +235,5 @@ onload="boot(
     <div id="info"></div>
     <canvas id="img_canvas"></canvas>
 </body>
+
 
