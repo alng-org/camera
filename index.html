@@ -8,8 +8,8 @@
     maximum-scale=1.0
     user-scalable=no">
     <script>
-
-        function boot(left,right,mleft,mright,canvas,info){
+        
+        function boot(canvas,info){
             if(
                 navigator.language === `zh-CN`
             ){
@@ -22,7 +22,7 @@
             document.body.addEventListener(
                 "click",
                 (e) => {
-                    init(left,right,mleft,mright,canvas,info);
+                    init(canvas,info);
                 },
                 {
                     once: true
@@ -42,7 +42,7 @@
             info.innerText = `${left('>')} _ ${right('<')}`;
         }
 
-        function init(left,right,mleft,mright,canvas,info){ 
+        function init(canvas,info){ 
             document.body.requestFullscreen().then(
             () => {
                 return navigator.mediaDevices.getUserMedia(
@@ -63,42 +63,12 @@
                  );
             }
         ).then(
-                (stream) => {
-                    maxsize_stream(stream);
-                    
-                    left.srcObject = stream;
-                    right.srcObject = stream;
-
-                    update_info(info,INFO.CAPTURING,INFO.CAPTURING);
-                    document.body.addEventListener(
-                        "click",
-                        (e) => {
-                            update_info(info,INFO.CAPTURED,INFO.CAPTURED);
-                            
-                            let first = left;
-                            let second = right;
-                           let vibrate_for_second = 100;
-                            let delay_capture_second = 120;
-
-                            
-                            let img_obj = before_grab(stream,canvas,mleft,mright,first,second);
-                            let await_draw_first = grab(stream,canvas,first,img_obj.first);
-                            navigator.vibrate(vibrate_for_second);
-                            setTimeout(
-                                () => {
-                                    grab(stream,canvas,second,img_obj.second, await_draw_first).then(
-                                        (_) => {
-                                            saved_img(canvas);
-                                            after_grab(first,second,mleft,mright,info);
-                                        }
-                                    )
-                                },
-                                delay_capture_second
-                            );
-                        }
-                    );
+                (stream) => maxsize_stream(stream)
+        ).then(
+                (tools) => {
+                    //todo
                 }
-            ).catch(
+        ).catch(
                 (err) => {
                     alert(`Catch the Fatal Error:\n${err}`);
                 }
@@ -106,7 +76,7 @@
 
         }
 
-        function maxsize_stream(stream){
+        function maxsize_stream(stream,canvas){
             let track = stream.getVideoTracks()[0];
             let cap = track.getCapabilities();
             let cwidth = cap.width?.max;
@@ -117,154 +87,51 @@
                 cheight !== undefined &&
                 czoom !== undefined
             ){
-                track.applyConstraints(
+                return track.applyConstraints(
                     {
                         width: cwidth,
                         height: cheight
                     }
-                );
-                track.applyConstraints(
-                    {
-                        advanced: [
+                ).then(
+                    () => 
+                        track.applyConstraints(
                             {
-                                zoom: czoom,
-                                whiteBalanceMode: "continuous",
-                                exposureMode: "continuous",
-                                focusMode: "continuous",
-                                resizeMode: "none"
+                                advanced: [
+                                    {
+                                        zoom: czoom,
+                                        whiteBalanceMode: "continuous",
+                                        exposureMode: "continuous",
+                                        focusMode: "continuous",
+                                        resizeMode: "none"
+                                    }
+                                ]
                             }
-                        ]
+                        )
+                ).then(
+                    () => {
+                        let imgc = new ImageCapture(track);
+                        return {
+                            gFrame: (f)  => imgc.grabFrame().then(f).catch(
+                                (err) => {
+                                    alert(`Cannot Capture an Image from the Camera, due to:\n${err}`);
+                                }
+                            ),
+                            preview_2d: 
+                                (img) => direct.draw(
+                                    cwidth,cheight
+                                )(canvas,img),
+                            preview_3d: 
+                                (left,right) => dubois.anaglyph(
+                                    cwidth,cheight
+                                )(canvas,left,right)
+                        };
                     }
-                );
+                );     
             }else{
-                //PASS
-            }
-        }
-        
-        function original(mleft,mright){
-            mleft.setAttribute(
-                "values",
-                color_matrix(
-                    color_vec(1,0,0,0,0),
-                    color_vec(0,1,0,0,0),
-                    color_vec(0,0,1,0,0),
-                    color_vec(0,0,0,1,0)
-                )
-            );
-            mright.setAttribute(
-                "values",
-                color_matrix(
-                    color_vec(1,0,0,0,0),
-                    color_vec(0,1,0,0,0),
-                    color_vec(0,0,1,0,0),
-                    color_vec(0,0,0,1,0)
-                )
-            );
-        }
-        
-        function dubois(mleft,mright){
-            //the matrix of the Dubois Anaglyph
-            mleft.setAttribute(
-                "values",
-                color_matrix(
-                    color_vec(0.456,0.5,0.176,0,0),
-                    color_vec(0,0,0,0,0),
-                    color_vec(0,0,0,0,0),
-                    color_vec(0,0,0,1,0)
-                )
-            );
-            mright.setAttribute(
-                "values",
-                color_matrix(
-                    color_vec(-0.043,-0.088,-0.002,0,0),
-                    color_vec(0.378,0.734,-0.018,0,0),
-                    color_vec(-0.072,0.212,1.131,0,-0.1),
-                    color_vec(0,0,0,1,0)
-                )
-            );
-        }
-
-        function color_vec(red_percent,green_percent,blue_percent,alpha_percent,offset){
-            return `${red_percent} ${green_percent} ${blue_percent} ${alpha_percent} ${offset}`;
-        }
-
-        function color_matrix(new_red,new_green,new_blue,new_alpha){
-            return `${new_red} ${new_green} ${new_blue} ${new_alpha}`;
-        }
-
-        function update_css(e,z_index,opacity,mix_blend_mode){
-            e.style.zIndex = z_index;
-            e.style.opacity = opacity;
-            e.style.mixBlendMode = mix_blend_mode;
-            return (img) => {
-                return {
-                    //necessary attributes
-                    opacity: opacity,
-                    mix_blend_mode: mix_blend_mode,
-                    filter: window.getComputedStyle(e).filter,
-                    // the image data
-                    img: img
-                };
-            };
-        }
-        function before_grab(stream,canvas,mleft,mright,first,second){
-            let track = stream.getVideoTracks()[0];
-            canvas.width = track.getSettings().width;
-            canvas.height = track.getSettings().height;
-            dubois(mleft,mright);
-            return {
-                first: update_css(first,1,1,"normal"),
-                second: update_css(second,2,0.5,"screen")
-            };
-            
-        }
-
-        function transform_mix(mix){
-            if(mix === "normal"){
-                return "source-over";
-            }else{
-                return mix;
-            }
-        }
-
-        function grab(stream,canvas,video,img_lambda,before = Promise.resolve(null)){
-            let track = stream.getVideoTracks()[0];
-            let imgc = new ImageCapture(track);
-            let ctx = canvas.getContext("2d");
-            return imgc.grabFrame().then(
-                    (img) => {
-                        video.pause();
-                        let img_value = img_lambda(img);
-                        return before.then(
-                            (_) => {
-                                ctx.filter = img_value.filter;
-                                ctx.globalCompositeOperation = transform_mix(img_value.mix_blend_mode);
-                                ctx.globalAlpha = img_value.opacity;
-                                ctx.drawImage(img_value.img, 0, 0);
-                                img_value.img.close();
-                                return null;
-                            }
-                        );
-                    }
-                ).catch(
-                    (err) => {
-                        alert(`Cannot Capture an Image from the Camera, due to:\n${err}`);
-                    }
+                return Promise.reject(
+                    "Failed apply constraints to the video stream from camera"
                 );
-        }
-
-        function after_grab(left,right,mleft,mright,info){
-            left.play().then(
-                () => {
-                    right.play().then(
-                        () => {
-                            //ensure left and right is playing
-                            original(mleft,mright);
-                            update_info(info,INFO.CAPTURING,INFO.CAPTURING);
-                        }
-                    );
-                }
-            );
+            }
         }
 
         function saved_img(canvas){
@@ -276,33 +143,19 @@
         }
         
     </script>
+    <script src="webgl2.js"></script>
     <style>
-        video{
-            width:100dvw;
-            height:100dvh;
-            object-fit: contain;
-            pointer-events: none;
-        }
-        video,#info{
+        canvas,#info{
             position: fixed;
             left: 50%;
             top: 50%;
             transform: translate(-50%,-50%);
         }
-        #left{
-            z-index: 1;
-            filter: url(#fleft);
-            opacity: 1;
-            mix-blend-mode: normal;
-        }
-        #right{
-            z-index: 2;
-            filter: url(#fright);
-            opacity: 0.5;
-            mix-blend-mode: screen;
+        canvas{
+            z-index:1;
         }
         #info{
-            z-index:3;
+            z-index:2;
             pointer-events: none;
             color: white;
             opacity: 0.5;
@@ -315,36 +168,17 @@
             width:100dvw;
             height:100dvh;
         }
-        svg,canvas{
-            display: none;
-        }
     </style>
 </head>
 <body 
 onload="boot(
-    document.getElementById('left'),
-    document.getElementById('right'),
-    document.getElementById('mleft'),
-    document.getElementById('mright'),
     document.getElementById('img_canvas'),
     document.getElementById('info')
-    )">
-    <video id="left" autoplay></video>
+)">
     <div id="info"></div>
-    <video id="right" autoplay></video>
     <canvas id="img_canvas"></canvas>
-    <svg>
-        <defs>
-            <filter id="fleft">
-                <feColorMatrix type="matrix" id= "mleft"/>                
-            </filter>
-            <filter id="fright">
-                <feColorMatrix type="matrix" id = "mright"/>                
-            </filter>
-        </defs>
-    </svg>
-
 </body>
+
 
 
 
