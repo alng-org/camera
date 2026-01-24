@@ -42,6 +42,65 @@
             info.innerText = `${left('>')} _ ${right('<')}`;
         }
 
+
+
+        class rAF{
+            #left = null;
+            #right = null;
+            #tools;
+            constructor(tools){
+                this.#tools = tools;
+            }
+
+            render(){
+                if(
+                    this.#left === null &&
+                    this.#right === null
+                ){
+                    this.#tools.gFrame(
+                        this.#tools.preview_2d
+                    );
+                }else if(
+                    this.#left !== null &&
+                    this.#right !== null
+                ){
+                    this.#tools.preview_3d(
+                        this.#left,
+                        this.#right
+                    );
+                }else{
+                    this.#tools.gFrame(
+                        (img) => this.#tools.preview_3d(
+                            this.#left ?? img,
+                            this.#right ?? img
+                        )
+                    );
+                }
+                requestAnimationFrame(this.render);
+            }
+            
+            capture_left(){
+                this.#tools.gFrame(
+                    (img) => {
+                        this.#left = img;
+                    }
+                );
+            }
+            
+            capture_right(){
+                this.#tools.gFrame(
+                    (img) => {
+                        this.#right = img;
+                    }
+                );
+            }
+            
+            clear(){
+                this.#left = null;
+                this.#right = null;
+            }
+        }
+
         function init(canvas,info){ 
             document.body.requestFullscreen().then(
             () => {
@@ -53,7 +112,7 @@
                                 ideal:3840
                             },
                             height:{
-                                ideal:2160
+                               ideal:2160
                             },
                             facingMode:{
                                 exact:"environment"
@@ -66,7 +125,9 @@
                 (stream) => maxsize_stream(stream)
         ).then(
                 (tools) => {
-                    //todo
+                    let c = new rAF(tools);
+                    c.render();
+                    
                 }
         ).catch(
                 (err) => {
@@ -178,22 +239,3 @@ onload="boot(
     <div id="info"></div>
     <canvas id="img_canvas"></canvas>
 </body>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
