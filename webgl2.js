@@ -1,0 +1,380 @@
+class webgl2{
+
+    static #report(error_message,on_console){
+        if(on_console === true){
+            console.error(error_message);
+        }else{
+            alert(error_message);
+        }
+    }
+
+    static #complie(WebGL2_context,vertex_shader_src,fragment_shader_src,report_on_console){
+        let abstract_complie = (TYPE,src) => {
+            let shader = WebGL2_context.createShader(TYPE);
+            WebGL2_context.shaderSource(shader,src);
+            WebGL2_context.compileShader(shader);
+            if(WebGL2_context.getShaderParameter(shader,WebGL2_context.COMPILE_STATUS) === false){
+                webgl2.#report(
+                    WebGL2_context.getShaderInfoLog(shader),
+                report_on_console
+                );
+                return null;
+            }else{
+                return shader;
+            }
+        };
+
+        let vs = abstract_complie(WebGL2_context.VERTEX_SHADER,vertex_shader_src);
+        let fs = abstract_complie(WebGL2_context.FRAGMENT_SHADER,fragment_shader_src);
+        if(vs !== null && fs !== null){
+            let program = WebGL2_context.createProgram();
+            WebGL2_context.attachShader(program,vs);
+            WebGL2_context.attachShader(program,fs);
+            WebGL2_context.linkProgram(program);
+            return program;
+        }else{
+            return null;
+        }
+        
+    }
+
+    static direct_draw = Symbol("normal");
+    static screen = Symbol("screen");
+
+    static #draw(WebGL2_context,report_on_console,blend_mode){
+        if(blend_mode === webgl2.direct_draw){
+            WebGL2_context.disable(WebGL2_context.BLEND);
+            WebGL2_context.clear(WebGL2_context.COLOR_BUFFER_BIT);
+        }else{
+            WebGL2_context.enable(WebGL2_context.BLEND);
+            switch(blend_mode){
+
+                case webgl2.screen:
+                    WebGL2_context.blendEquation(WebGL2_context.FUNC_ADD);
+                    WebGL2_context.blendFunc(
+                        WebGL2_context.ONE_MINUS_DST_COLOR,
+                        WebGL2_context.ONE
+                    );
+                    break;
+
+                default:
+                    webgl2.#report(`blend mode ${blend_mode} is not defined`,report_on_console);
+                    return null;
+            }
+        }
+        WebGL2_context.drawArrays(WebGL2_context.TRIANGLES,0,6);
+        return WebGL2_context;
+    }
+
+
+    static #export(WebGL2_canvas,target_canvas,report_on_console){
+        let bitmaprenderer_context = target_canvas.getContext("bitmaprenderer");
+        if(bitmaprenderer_context === null){
+            webgl2.#report(`bitmaprenderer is not support or ${target_canvas} is set to a different context mode`,report_on_console);
+            return null;
+        }else{
+            bitmaprenderer_context.transferFromImageBitmap(
+                WebGL2_canvas.transferToImageBitmap()
+            );
+            return target_canvas;
+        }
+    }
+
+    static #universal_vertex_shader_src(pos_variable = "std_pos"){
+        return `\
+#version 300 es
+in vec2 ${pos_variable};
+void main(){
+    gl_Position = vec4(${pos_variable},0.0,1.0);
+}`;
+    }
+
+    static #vao(WebGL2_context,from_program,report_on_console,using_pos_variable = "std_pos"){
+        let  reference = WebGL2_context.getAttribLocation(from_program,using_pos_variable);
+        if(reference === -1){
+            webgl2.#report(`pos variable ${using_pos_variable} is not found`,report_on_console);
+            return null;
+        }else{
+            let vao = WebGL2_context.createVertexArray();
+            WebGL2_context.bindVertexArray(vao);
+
+            let vbo = WebGL2_context.createBuffer();
+            WebGL2_context.bindBuffer(WebGL2_context.ARRAY_BUFFER,vbo);
+            WebGL2_context.bufferData(
+                WebGL2_context.ARRAY_BUFFER,
+                new Float32Array([
+                    -1,-1,
+                    1,-1,
+                    -1,1,
+                    -1,1,
+                    1,-1,
+                    1,1
+                ]),
+                WebGL2_context.STATIC_DRAW
+            );
+
+            WebGL2_context.enableVertexAttribArray(reference);
+            WebGL2_context.vertexAttribPointer(reference,2,WebGL2_context.FLOAT,false,0,0);
+
+            WebGL2_context.bindVertexArray(null);
+            WebGL2_context.bindBuffer(WebGL2_context.ARRAY_BUFFER,null);
+            return vao;
+        }
+    }
+
+    static #direct_fragment_shader_src(tex_img = "std_img",color_mat = "std_mat"){
+        return `\
+#version 300 es
+precision highp float;
+uniform sampler2D ${tex_img};
+uniform mat4 ${color_mat};
+out vec4 color_result;
+void main(){
+    ivec2 tex_size = textureSize(${tex_img},0);
+    float Y = float(tex_size.y);
+    mat4 pos_mat = mat4(
+        1,      0,     0,  0,
+        0,     -1,     0,  0,
+        0,      0,     1,  0,
+        0,  Y-1.0,     0,  1
+    );
+    color_result = ${color_mat} * texelFetch(
+        ${tex_img},
+        ivec2(
+            (pos_mat * gl_FragCoord).xy
+        ),
+        0
+    );
+}`;
+    }
+
+    static #texture(WebGL2_context,tex_width,tex_height,from_program,report_on_console,tex_img = "std_img",color_mat = "std_mat"){
+        let tex_ref = WebGL2_context.getUniformLocation(from_program,tex_img);
+        let mat_ref = WebGL2_context.getUniformLocation(from_program,color_mat);
+        if(tex_ref === null){
+            webgl2.#report(`tex image ${tex_img} is not found`,report_on_console);
+            return null;
+        }else if(mat_ref === null){
+            webgl2.#report(`color matrix ${color_mat} is not found`,report_on_console);
+            return null;
+        }else{
+            let texture = WebGL2_context.createTexture();
+            WebGL2_context.activeTexture(WebGL2_context.TEXTURE0);
+            WebGL2_context.bindTexture(WebGL2_context.TEXTURE_2D,texture);
+            WebGL2_context.uniform1i(tex_ref,0);
+            WebGL2_context.texParameteri(
+                WebGL2_context.TEXTURE_2D,
+                WebGL2_context.TEXTURE_MIN_FILTER,
+                WebGL2_context.NEAREST
+            );
+            WebGL2_context.texParameteri(
+                WebGL2_context.TEXTURE_2D,
+                WebGL2_context.TEXTURE_MAG_FILTER,
+                WebGL2_context.NEAREST
+            );
+            WebGL2_context.pixelStorei(WebGL2_context.UNPACK_ALIGNMENT,1);
+            return (image_bit_map,color_mat) => {
+                if(
+                    typeof(image_bit_map) === "object" &&
+                    image_bit_map.constructor === ImageBitmap.prototype.constructor &&
+                    image_bit_map.width === tex_width &&
+                    image_bit_map.height === tex_height
+                ){
+                    if(
+                        typeof(color_mat) === "object" && 
+                        color_mat.constructor ===Float32Array.prototype.constructor &&
+                        color_mat.length === 16
+                    ){
+                        WebGL2_context.activeTexture(WebGL2_context.TEXTURE0);
+                        WebGL2_context.bindTexture(WebGL2_context.TEXTURE_2D,texture);
+                        WebGL2_context.texImage2D(
+                            WebGL2_context.TEXTURE_2D,
+                            0,
+                            WebGL2_context.RGBA,
+                            WebGL2_context.RGBA,
+                            WebGL2_context.UNSIGNED_BYTE,
+                            image_bit_map
+                        );
+                        WebGL2_context.uniformMatrix4fv(mat_ref,false,color_mat);
+                        return WebGL2_context;
+                    }else{
+                        webgl2.#report(`Required color mat should be Float32Array[16]`,report_on_console);
+                        return null;
+                    }
+                    
+                }else{
+                    webgl2.#report(`Required ImageBitmap [width = ${tex_width} height = ${tex_height}]`,report_on_console);
+                    return null;
+                }
+            }
+        }
+    }
+
+
+    static no_export = null;
+
+    static abstract_render(width,height,report_on_console = true){
+        let offscreen_canvas = new OffscreenCanvas(width,height);
+        let gl = offscreen_canvas.getContext("webgl2");
+        if(gl === null){
+            webgl2.#report("WebGL2 is not support",report_on_console);
+            return null;
+        }else{
+            let vs_src = webgl2.#universal_vertex_shader_src();
+            let fs_src = webgl2.#direct_fragment_shader_src();
+            let program = webgl2.#complie(
+                gl,
+                vs_src,
+                fs_src,
+                report_on_console
+            );
+            if(program === null){
+                return null;
+            }else{
+                let vao = webgl2.#vao(
+                    gl,
+                    program,
+                    report_on_console
+                );
+                if(vao === null){
+                    return null;
+                }else{
+                    gl.useProgram(program);
+                    gl.bindVertexArray(vao);
+
+                    let fcopy = webgl2.#texture(
+                        gl,
+                        width,
+                        height,
+                        program,
+                        report_on_console
+                    );
+
+                    let abstract_pipeline = (
+                        image_bit_map,
+                        color_mat = webgl2.color_id_mat,
+                        blend_mode = webgl2.direct_draw,
+                        target_canvas = webgl2.no_export
+                    ) => {
+                        if(fcopy(image_bit_map,color_mat) === null){
+                            return Promise.reject("See more elsewhere");
+                        }else{
+                            webgl2.#draw(
+                                gl,
+                                report_on_console,
+                                blend_mode
+                            );
+                            if(target_canvas === webgl2.no_export){
+                                return Promise.resolve(abstract_pipeline);
+                            }else{
+                                webgl2.#export(
+                                    offscreen_canvas,
+                                    target_canvas,
+                                    report_on_console
+                                );
+                                return Promise.reject("This pipeline has been export");
+                            }
+                        }
+                    };
+
+                    return Promise.resolve(abstract_pipeline);
+
+                }
+            }
+        }
+    }
+
+    static color_id_mat = webgl2.color_mat(
+        webgl2.new_color(1,0,0,0),
+        webgl2.new_color(0,1,0,0),
+        webgl2.new_color(0,0,1,0),
+        webgl2.new_color(0,0,0,1)
+    );
+    
+    static new_color(red_percent,green_percent,blue_percent,alpha_percent){
+        return new Float32Array(
+            [
+                    red_percent,
+                    green_percent,
+                    blue_percent,
+                    alpha_percent
+               ]
+        );
+    }
+
+    static color_mat(new_red,new_green,new_blue,new_alpha){
+        if(
+            [new_red,new_green,new_blue,new_alpha].every(
+                (t) =>  
+                    typeof(t) === "object" && 
+                    t.constructor ===Float32Array.prototype.constructor &&
+                    t.length === 4
+            ) === true
+        ){
+            return new Float32Array(
+                [
+                    new_red[0],new_green[0],new_blue[0],new_alpha[0],
+                    new_red[1],new_green[1],new_blue[1],new_alpha[1],
+                    new_red[2],new_green[2],new_blue[2],new_alpha[2],
+                    new_red[3],new_green[3],new_blue[3],new_alpha[3]
+                ]
+            );
+        }else{
+            return null;
+        }
+        
+        
+    }
+
+}
+
+class dubois extends webgl2{
+
+    static #left_mat(){
+        return webgl2.color_mat(
+                    webgl2.new_color(0.456,0.5,0.176,0),
+                    webgl2.new_color(0,0,0,0),
+                    webgl2.new_color(0,0,0,0),
+                    webgl2.new_color(0,0,0,1)
+                );
+    }
+    
+    static #right_mat(){
+        return  webgl2.color_mat(
+                    webgl2.new_color(-0.043,-0.088,-0.002,0),
+                    webgl2.new_color(0.378,0.734,-0.018,0),
+                    webgl2.new_color(-0.072,0.212,1.131,0),
+                    webgl2.new_color(0,0,0,1)
+                );
+    }
+
+    static anaglyph(width,height){
+        let rd = webgl2.abstract_render(width,height);
+        return (target_canvas,left_image,right_image) =>{
+            rd.then(
+                 f => f(left_image,dubois.#left_mat())
+            ).then(
+                f => f(right_image,dubois.#right_mat(),webgl2.screen,target_canvas)
+            );
+        };
+    }
+
+}
+
+class direct extends webgl2{
+
+    static draw(width,height){
+        let rd = webgl2.abstract_render(width,height);
+        return (target_canvas,image) =>{
+            rd.then(
+                f => f(
+                    image,
+                    webgl2.color_id_mat,
+                    webgl2.direct_draw,
+                    target_canvas
+                )
+            );
+        };
+    }
+
+}
