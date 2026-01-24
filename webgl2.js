@@ -216,9 +216,10 @@ void main(){
     static abstract_render(width,height,report_on_console = true){
         let offscreen_canvas = new OffscreenCanvas(width,height);
         let gl = offscreen_canvas.getContext("webgl2");
+        let reject = Promise.reject("See more elsewhere");
         if(gl === null){
             webgl2.#report("WebGL2 is not support",report_on_console);
-            return null;
+            return reject;
         }else{
             let vs_src = webgl2.#universal_vertex_shader_src();
             let fs_src = webgl2.#direct_fragment_shader_src();
@@ -229,7 +230,7 @@ void main(){
                 report_on_console
             );
             if(program === null){
-                return null;
+                return reject;
             }else{
                 let vao = webgl2.#vao(
                     gl,
@@ -237,7 +238,7 @@ void main(){
                     report_on_console
                 );
                 if(vao === null){
-                    return null;
+                    return reject;
                 }else{
                     gl.useProgram(program);
                     gl.bindVertexArray(vao);
@@ -250,6 +251,18 @@ void main(){
                         report_on_console
                     );
 
+                    let first_abstract_piprline = (pipeline) => (
+                        image_bit_map,
+                        color_mat = webgl2.color_id_mat,
+                        blend_mode = webgl2.direct_draw,
+                        target_canvas = webgl2.no_export
+                    ) => pipeline(
+                        image_bit_map,
+                        color_mat,
+                        webgl2.direct_draw, //fixed the blend mode
+                        target_canvas
+                    );
+
                     let abstract_pipeline = (
                         image_bit_map,
                         color_mat = webgl2.color_id_mat,
@@ -257,7 +270,7 @@ void main(){
                         target_canvas = webgl2.no_export
                     ) => {
                         if(fcopy(image_bit_map,color_mat) === null){
-                            return Promise.reject("See more elsewhere");
+                            return reject;
                         }else{
                             webgl2.#draw(
                                 gl,
@@ -265,19 +278,29 @@ void main(){
                                 blend_mode
                             );
                             if(target_canvas === webgl2.no_export){
-                                return Promise.resolve(abstract_pipeline);
+                                return Promise.resolve(
+                                    abstract_pipeline
+                                );
                             }else{
                                 webgl2.#export(
                                     offscreen_canvas,
                                     target_canvas,
                                     report_on_console
                                 );
-                                return Promise.reject("This pipeline has been export");
+                                return Promise.resolve(
+                                    first_abstract_piprline(
+                                        abstract_pipeline
+                                    )
+                                );
                             }
                         }
                     };
 
-                    return Promise.resolve(abstract_pipeline);
+                    return Promise.resolve(
+                        first_abstract_piprline(
+                            abstract_pipeline
+                        )
+                    );
 
                 }
             }
@@ -376,5 +399,6 @@ class direct extends webgl2{
             );
         };
     }
+
 
 }
