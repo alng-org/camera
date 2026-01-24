@@ -51,8 +51,7 @@
             constructor(tools){
                 this.#tools = tools;
             }
-
-            render(){
+            render = () => {
                 if(
                     this.#left === null &&
                     this.#right === null
@@ -70,14 +69,14 @@
                     );
                 }else{
                     this.#tools.gFrame(
-                        (img) => this.#tools.preview_3d(
+                (img) => this.#tools.preview_3d(
                             this.#left ?? img,
                             this.#right ?? img
                         )
                     );
                 }
                 requestAnimationFrame(this.render);
-            }
+            };
             
             capture_left(){
                 this.#tools.gFrame(
@@ -235,5 +234,6 @@ onload="boot(
     <div id="info"></div>
     <canvas id="img_canvas"></canvas>
 </body>
+
 
 
