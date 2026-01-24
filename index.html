@@ -151,23 +151,14 @@
                 return track.applyConstraints(
                     {
                         width: cwidth,
-                        height: cheight
+                        height: cheight,
+                        advanced: [{
+                            zoom: czoom,
+                            whiteBalanceMode: "continuous",
+                            exposureMode: "continuous",
+                            focusMode: "continuous"
+                        }]
                     }
-                ).then(
-                    () => 
-                        track.applyConstraints(
-                            {
-                                advanced: [
-                                    {
-                                        zoom: czoom,
-                                        whiteBalanceMode: "continuous",
-                                        exposureMode: "continuous",
-                                        focusMode: "continuous",
-                                        resizeMode: "none"
-                                    }
-                                ]
-                            }
-                        )
                 ).then(
                     () => {
                         let imgc = new ImageCapture(track);
@@ -239,3 +230,4 @@ onload="boot(
     <div id="info"></div>
     <canvas id="img_canvas"></canvas>
 </body>
+
