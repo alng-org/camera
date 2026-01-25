@@ -48,53 +48,75 @@
             #left = null;
             #right = null;
             #tools;
+            #handle = rAF.original;
             constructor(tools){
                 this.#tools = tools;
             }
-            static render(ref){
+            
+            static #original(ref,next_render){
+                ref.#tools.gFrame(
+                    (img) => {
+                        ref.#tools.preview_2d(img);
+                        img.close();
+                        next_render();
+                    }
+                );
+            }
+
+            static #draw_left_first(left){
+                return (ref,next_render) => {
+                    ref.#tools.gFrame(
+                        (right) => {
+                            ref.#tools
+                               .preview_3d
+                               .draw_left_first(
+                                   left,
+                                   right
+                               );
+                            right.close();
+                            next_render();
+                        }
+                    );
+                }
+            }
+
+            static #draw_right_first(right){
+                return (ref,next_render) => {
+                    ref.#tools.gFrame(
+                        (left) => {
+                            ref.#tools
+                               .preview_3d
+                               .draw_right_first(
+                                   left,
+                                   right
+                               );
+                            left.close();
+                            next_render();
+                        }
+                    );
+                }
+            }
+
+            static #snooze(ref,next_render){
+                    next_render();
+            }
+              static render(ref){
                 let next_render = () => {
                     requestAnimationFrame(
                         () => rAF.render(ref)
                     );
                 };
-                if(
-                    ref.#left === null &&
-                    ref.#right === null
-                ){
-                    ref.#tools.gFrame(
-                        (img) => {
-                            ref.#tools.preview_2d(img);
-                            img.close();
-                            next_render();
-                        }
-                    );
-                }else if(
-                    ref.#left !== null &&
-                    ref.#right !== null
-                ){
-                    ref.#tools.preview_3d(
-                        ref.#left,
-                        ref.#right
-                    );
-                    next_render();
-                }else{
-                    ref.#tools.gFrame(
-                        (img) => {
-                            ref.#tools.preview_3d(
-                                ref.#left ?? img,
-                                ref.#right ?? img
-                            );
-                            img.close();
-                            next_render();
-                        }
-                    );
-                }
+                ref.#handle(ref,next_render);
             };
             
             capture_left(){
                 this.#tools.gFrame(
                     (img) => {
                         this.#left = img;
+                        this.#handle = 
+                            rAF.draw_left_first(
+                                this.#left
+                            );
                     }
                 );
             }
@@ -103,14 +125,18 @@
                 this.#tools.gFrame(
                     (img) => {
                         this.#right = img;
+                        this.#handle = 
+                            rAF.#draw_right_first(
+                                this.#right
+                            );
                     }
                 );
             }
             
             clear(){
-                this.#left.close();
+                this.#left?.close();
                 this.#left = null;
-                this.#right.close();
+                this.#right?.close();
                 this.#right = null;
             }
         }
@@ -213,7 +239,7 @@
                                     preview_2d: 
                                         (img) => draw_2d(canvas,img),
                                     preview_3d: 
-                                        (left,right) => draw_3d(canvas,left,right)
+                                        draw_3d(canvas)
                                 };
                             }
                         );
@@ -273,6 +299,7 @@ onload="boot(
     <div id="info"></div>
     <canvas id="img_canvas"></canvas>
 </body>
+
 
 
 
