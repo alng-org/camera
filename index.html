@@ -162,40 +162,55 @@
                 cheight !== undefined &&
                 czoom !== undefined
             ){
-                return track.applyConstraints(
+                stream.getTracks().forEach(t => t.stop());
+                
+                return navigator.mediaDevices.getUserMedia(
                     {
-                        width: {
-                            exact: cwidth
-                        },
-                        height: {
-                            exact: cheight
-                        },
-                        advanced: [{
-                            zoom: czoom,
-                            whiteBalanceMode: "continuous",
-                            exposureMode: "continuous",
-                            focusMode: "continuous"
-                        }]
+                        audio:false,
+                        video:{
+                            width:{
+                                exact: cwidth
+                            },
+                            height:{
+                               exact: cheight
+                            },
+                            facingMode:{
+                                exact:"environment"
+                            }
+                        }
                     }
                 ).then(
-                    () => {
-                        canvas.width = cwidth;
-                        canvas.height = cheight;
-                        let track_full = stream.getVideoTracks()[0];
-                        let imgc = new ImageCapture(track_full);
-                        let draw_2d = direct.draw(cwidth,cheight);
-                        let draw_3d = dubois.anaglyph(cwidth,cheight);
-                        return {
-                            gFrame: (f)  => imgc.grabFrame().then(f).catch(
-                                (err) => {
-                                    alert(`Cannot Capture an Image from the Camera, due to:\n${err}`);
-                                }
-                            ),
-                            preview_2d: 
-                                (img) => draw_2d(canvas,img),
-                            preview_3d: 
-                                (left,right) => draw_3d(canvas,left,right)
-                        };
+                    (stream_full) => {
+                        let track_full = stream_full.getVideoTracks()[0];
+                        return track_full.applyConstraints(
+                            {
+                                advanced: [{
+                                    zoom: czoom,
+                                    whiteBalanceMode: "continuous",
+                                    exposureMode: "continuous",
+                                    focusMode: "continuous"
+                                }]
+                            }
+                        ).then(
+                            () => {
+                                canvas.width = cwidth;
+                                canvas.height = cheight;
+                                let imgc = new ImageCapture(track_full);
+                                let draw_2d = direct.draw(cwidth,cheight);
+                                let draw_3d = dubois.anaglyph(cwidth,cheight);
+                                return {
+                                    gFrame: (f)  => imgc.grabFrame().then(f).catch(
+                                        (err) => {
+                                            alert(`Cannot Capture an Image from the Camera, due to:\n${err}`);
+                                        }
+                                    ),
+                                    preview_2d: 
+                                        (img) => draw_2d(canvas,img),
+                                    preview_3d: 
+                                        (left,right) => draw_3d(canvas,left,right)
+                                };
+                            }
+                        );
                     }
                 );     
             }else{
@@ -252,4 +267,5 @@ onload="boot(
     <div id="info"></div>
     <canvas id="img_canvas"></canvas>
 </body>
+
 
