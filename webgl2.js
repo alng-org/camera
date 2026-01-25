@@ -201,7 +201,11 @@ void main(){
                     }
                     
                 }else{
-                    webgl2.#report(`Required ImageBitmap [width = ${tex_width} height = ${tex_height}]`,report_on_console);
+                    webgl2.#report(
+                        `Required /*ImageBitmap*/ [width = ${tex_width} height = ${tex_height}]
+                        Actual [width = ${image_bit_map.width} height = ${image_bit_map.height}]`,
+                        report_on_console
+                    );
                     return null;
                 }
             }
@@ -399,6 +403,7 @@ class direct extends webgl2{
 
 
 }
+
 
 
 
