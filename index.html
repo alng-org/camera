@@ -177,7 +177,8 @@
                     () => {
                         canvas.width = cwidth;
                         canvas.height = cheight;
-                        let imgc = new ImageCapture(track);
+                        let track_full = stream.getVideoTracks()[0];
+                        let imgc = new ImageCapture(track_full);
                         let draw_2d = direct.draw(cwidth,cheight);
                         let draw_3d = dubois.anaglyph(cwidth,cheight);
                         return {
@@ -247,6 +248,7 @@ onload="boot(
     <div id="info"></div>
     <canvas id="img_canvas"></canvas>
 </body>
+
 
 
 
