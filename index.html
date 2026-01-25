@@ -165,6 +165,8 @@
                         canvas.width = cwidth;
                         canvas.height = cheight;
                         let imgc = new ImageCapture(track);
+                        let draw_2d = direct.draw(cwidth,cheight);
+                        let draw_3d = dubois.anaglyph(cwidth,cheight);
                         return {
                             gFrame: (f)  => imgc.grabFrame().then(f).catch(
                                 (err) => {
@@ -172,13 +174,9 @@
                                 }
                             ),
                             preview_2d: 
-                                (img) => direct.draw(
-                                    cwidth,cheight
-                                )(canvas,img),
+                                (img) => draw_2d(canvas,img),
                             preview_3d: 
-                                (left,right) => dubois.anaglyph(
-                                    cwidth,cheight
-                                )(canvas,left,right)
+                                (left,right) => draw_3d(canvas,left,right)
                         };
                     }
                 );     
@@ -236,6 +234,7 @@ onload="boot(
     <div id="info"></div>
     <canvas id="img_canvas"></canvas>
 </body>
+
 
 
 
