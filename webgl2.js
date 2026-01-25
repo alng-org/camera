@@ -157,6 +157,8 @@ void main(){
 }`;
     }
 
+    static #for_delete = Symbol("for delete");
+
     static #texture(WebGL2_context,tex_width,tex_height,from_program,report_on_console,tex_img = "std_img",color_mat = "std_mat"){
         let tex_ref = WebGL2_context.getUniformLocation(from_program,tex_img);
         let mat_ref = WebGL2_context.getUniformLocation(from_program,color_mat);
@@ -186,47 +188,52 @@ void main(){
                 WebGL2_context.bindTexture(WebGL2_context.TEXTURE_2D, null);
                 WebGL2_context.deleteTexture(texture);
             };
-            return (image_bit_map,color_mat) => {
+            return (image_bit_map, color_mat = webgl2.#for_delete) => {
                 if(
-                    image_bit_map instanceof ImageBitmap &&
-                    image_bit_map.width === tex_width &&
-                    image_bit_map.height === tex_height
+                    image_bit_map === webgl2.#for_delete ||
+                    color_mat === webgl2.#for_delete
                 ){
-                    if(
-                        color_mat instanceof Float32Array &&
-                        color_mat.length === 16
-                    ){
-                        WebGL2_context.activeTexture(WebGL2_context.TEXTURE0);
-                        WebGL2_context.bindTexture(WebGL2_context.TEXTURE_2D,texture);
-                        WebGL2_context.texImage2D(
-                            WebGL2_context.TEXTURE_2D,
-                            0,
-                            WebGL2_context.RGBA,
-                            WebGL2_context.RGBA,
-                            WebGL2_context.UNSIGNED_BYTE,
-                            image_bit_map
-                        );
-                        WebGL2_context.uniformMatrix4fv(mat_ref,false,color_mat);
-                        return WebGL2_context;
-                    }else{
-                        webgl2.#report(
-                            `Required color mat should be Float32Array[16]`,
-                            report_on_console
-                        );
-                        delete_texture();
-                        return null;
-                    }
-                    
-                }else{
+                    delete_texture();
+                    return null;
+                }else if(
+                    !(
+                        image_bit_map instanceof ImageBitmap &&
+                        image_bit_map.width === tex_width &&
+                        image_bit_map.height === tex_height
+                    )
+                ){
                     webgl2.#report(
                         `Required ImageBitmap [width = ${tex_width} height = ${tex_height}]
                         Actual [width = ${image_bit_map.width} height = ${image_bit_map.height}]`,
                         report_on_console
                     );
-                    delete_texture();
                     return null;
+                }else if(
+                    !(
+                        color_mat instanceof Float32Array &&
+                        color_mat.length === 16
+                    )
+                ){
+                    webgl2.#report(
+                        `Required color mat should be Float32Array[16]`,
+                        report_on_console
+                    );
+                    return null;
+                }else{
+                    WebGL2_context.activeTexture(WebGL2_context.TEXTURE0);
+                    WebGL2_context.bindTexture(WebGL2_context.TEXTURE_2D,texture);
+                    WebGL2_context.texImage2D(
+                        WebGL2_context.TEXTURE_2D,
+                        0,
+                        WebGL2_context.RGBA,
+                        WebGL2_context.RGBA,
+                        WebGL2_context.UNSIGNED_BYTE,
+                        image_bit_map
+                    );
+                    WebGL2_context.uniformMatrix4fv(mat_ref,false,color_mat);
+                    return WebGL2_context;
                 }
-            }
+            };
         }
     }
 
@@ -274,6 +281,13 @@ void main(){
                     gl.useProgram(program);
                     gl.bindVertexArray(vao);
 
+                    let partical_delete = () => {
+                        gl.deleteProgram(program);
+                        gl.deleteVertexArray(vao);
+                        gl.deleteBuffer(vbo);
+                        return finally_delete();
+                    };
+                    
                     let fcopy = webgl2.#texture(
                         gl,
                         width,
@@ -282,58 +296,60 @@ void main(){
                         report_on_console
                     );
 
-                    let first_abstract_pipeline = (pipeline) => (
-                        image_bit_map,
-                        color_mat = webgl2.color_id_mat,
-                        blend_mode = webgl2.direct_draw,
-                        target_canvas = webgl2.no_export
-                    ) => pipeline(
-                        image_bit_map,
-                        color_mat,
-                        webgl2.direct_draw, //fixed the blend mode
-                        target_canvas
-                    );
-                    let full_delete = () => {
-                        gl.deleteProgram(program);
-                        gl.deleteVertexArray(vao);
-                        gl.deleteBuffer(vbo);
-                        return finally_delete();
-                    };
-                    let abstract_pipeline = (
-                        image_bit_map,
-                        color_mat = webgl2.color_id_mat,
-                        blend_mode = webgl2.direct_draw,
-                        target_canvas = webgl2.no_export
-                    ) => {
-                        if(
-                            fcopy(image_bit_map,color_mat) === null ||
-                            webgl2.#draw(
-                                gl,
-                                report_on_console,
-                                blend_mode
-                            ) === null
-                        ){
-                            return full_delete();
-                        }else if(target_canvas === webgl2.no_export){
-                            return abstract_pipeline;
-                        }else if(
-                            webgl2.#export(
-                                offscreen_canvas,
-                                target_canvas,
-                                report_on_console
-                            ) === null
-                        ){
-                            return full_delete();
-                        }else{
-                            return first_abstract_pipeline(
-                                abstract_pipeline
-                            );
-                        }
-                    };
-
-                    return first_abstract_pipeline(
-                        abstract_pipeline
-                    );
+                    if(fcopy === null){
+                        return partical_delete();
+                    }else{
+                        let first_abstract_pipeline = (pipeline) => (
+                            image_bit_map,
+                            color_mat = webgl2.color_id_mat,
+                            blend_mode = webgl2.direct_draw,
+                            target_canvas = webgl2.no_export
+                        ) => pipeline(
+                            image_bit_map,
+                            color_mat,
+                            webgl2.direct_draw, //fixed the blend mode
+                            target_canvas
+                        );
+                        let full_delete = () => {
+                            fcopy(webgl2.#for_delete); //delete texture
+                            return partical_delete();
+                        };
+                        let abstract_pipeline = (
+                            image_bit_map,
+                            color_mat = webgl2.color_id_mat,
+                            blend_mode = webgl2.direct_draw,
+                            target_canvas = webgl2.no_export
+                        ) => {
+                            if(
+                                fcopy(image_bit_map,color_mat) === null ||
+                                webgl2.#draw(
+                                    gl,
+                                    report_on_console,
+                                    blend_mode
+                                ) === null
+                            ){
+                                return full_delete();
+                            }else if(target_canvas === webgl2.no_export){
+                                return abstract_pipeline;
+                            }else if(
+                                webgl2.#export(
+                                    offscreen_canvas,
+                                    target_canvas,
+                                    report_on_console
+                                ) === null
+                            ){
+                                return full_delete();
+                            }else{
+                                return first_abstract_pipeline(
+                                    abstract_pipeline
+                                );
+                            }
+                        };
+                        return first_abstract_pipeline(
+                            abstract_pipeline
+                        );
+                    }
+                    
                 }
             }
         }
@@ -424,11 +440,12 @@ class render{
                 alert(
                     "Please Reload the Website"
                 );
+                return null;
             }else{
-                //PASS
+                return this;
             }
         }else{
-            //PASS
+            return this;
         }
     }
 }
@@ -486,6 +503,7 @@ class direct extends webgl2{
 
 
 }
+
 
 
 
