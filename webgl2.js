@@ -68,6 +68,9 @@ class webgl2{
 
 
     static #export(WebGL2_canvas,target_canvas,report_on_console){
+        target_canvas.width = WebGL2_canvas.width;
+        target_canvas.height = WebGL2_canvas.height;
+        
         let bitmaprenderer_context = target_canvas.getContext("bitmaprenderer");
         if(bitmaprenderer_context === null){
             webgl2.#report(`bitmaprenderer is not support or ${target_canvas} is set to a different context mode`,report_on_console);
@@ -89,11 +92,14 @@ void main(){
 }`;
     }
 
-    static #vao(WebGL2_context,from_program,report_on_console,using_pos_variable = "std_pos"){
+    static #vxo(WebGL2_context,from_program,report_on_console,using_pos_variable = "std_pos"){
         let  reference = WebGL2_context.getAttribLocation(from_program,using_pos_variable);
         if(reference === -1){
             webgl2.#report(`pos variable ${using_pos_variable} is not found`,report_on_console);
-            return null;
+            return {
+                vao:null,
+                vbo:null
+            };
         }else{
             let vao = WebGL2_context.createVertexArray();
             WebGL2_context.bindVertexArray(vao);
@@ -118,7 +124,10 @@ void main(){
 
             WebGL2_context.bindVertexArray(null);
             WebGL2_context.bindBuffer(WebGL2_context.ARRAY_BUFFER,null);
-            return vao;
+            return {
+                vao:vao,
+                vbo:vbo
+            };
         }
     }
 
@@ -173,6 +182,10 @@ void main(){
                 WebGL2_context.NEAREST
             );
             WebGL2_context.pixelStorei(WebGL2_context.UNPACK_ALIGNMENT,1);
+            let delete_texture = () =>{
+                WebGL2_context.bindTexture(WebGL2_context.TEXTURE_2D, null);
+                WebGL2_context.deleteTexture(texture);
+            };
             return (image_bit_map,color_mat) => {
                 if(
                     image_bit_map instanceof ImageBitmap &&
@@ -196,7 +209,11 @@ void main(){
                         WebGL2_context.uniformMatrix4fv(mat_ref,false,color_mat);
                         return WebGL2_context;
                     }else{
-                        webgl2.#report(`Required color mat should be Float32Array[16]`,report_on_console);
+                        webgl2.#report(
+                            `Required color mat should be Float32Array[16]`,
+                            report_on_console
+                        );
+                        delete_texture();
                         return null;
                     }
                     
@@ -206,6 +223,7 @@ void main(){
                         Actual [width = ${image_bit_map.width} height = ${image_bit_map.height}]`,
                         report_on_console
                     );
+                    delete_texture();
                     return null;
                 }
             }
@@ -218,9 +236,20 @@ void main(){
     static abstract_render(width,height,report_on_console = true){
         let offscreen_canvas = new OffscreenCanvas(width,height);
         let gl = offscreen_canvas.getContext("webgl2");
+        let finally_delete = () => {
+            gl?.getExtension(
+                "WEBGL_lose_context"
+            )?.loseContext();
+            gl = null;
+            
+            offscreen_canvas.width = 0;
+            offscreen_canvas.height = 0;
+            offscreen_canvas = null;
+            return null;
+        };
         if(gl === null){
             webgl2.#report("WebGL2 is not support",report_on_console);
-            return null;
+            return finally_delete();
         }else{
             let vs_src = webgl2.#universal_vertex_shader_src();
             let fs_src = webgl2.#direct_fragment_shader_src();
@@ -231,15 +260,16 @@ void main(){
                 report_on_console
             );
             if(program === null){
-                return null;
+                return finally_delete();
             }else{
-                let vao = webgl2.#vao(
+                let {vao,vbo} = webgl2.#vxo(
                     gl,
                     program,
                     report_on_console
                 );
                 if(vao === null){
-                    return null;
+                    gl.deleteProgram(program);
+                    return finally_delete();
                 }else{
                     gl.useProgram(program);
                     gl.bindVertexArray(vao);
@@ -263,33 +293,41 @@ void main(){
                         webgl2.direct_draw, //fixed the blend mode
                         target_canvas
                     );
-
+                    let full_delete = () => {
+                        gl.deleteProgram(program);
+                        gl.deleteVertexArray(vao);
+                        gl.deleteBuffer(vbo);
+                        return finally_delete();
+                    };
                     let abstract_pipeline = (
                         image_bit_map,
                         color_mat = webgl2.color_id_mat,
                         blend_mode = webgl2.direct_draw,
                         target_canvas = webgl2.no_export
                     ) => {
-                        if(fcopy(image_bit_map,color_mat) === null){
-                            return null;
-                        }else{
+                        if(
+                            fcopy(image_bit_map,color_mat) === null ||
                             webgl2.#draw(
                                 gl,
                                 report_on_console,
                                 blend_mode
+                            ) === null
+                        ){
+                            return full_delete();
+                        }else if(target_canvas === webgl2.no_export){
+                            return abstract_pipeline;
+                        }else if(
+                            webgl2.#export(
+                                offscreen_canvas,
+                                target_canvas,
+                                report_on_console
+                            ) === null
+                        ){
+                            return full_delete();
+                        }else{
+                            return first_abstract_pipeline(
+                                abstract_pipeline
                             );
-                            if(target_canvas === webgl2.no_export){
-                                return abstract_pipeline;
-                            }else{
-                                webgl2.#export(
-                                    offscreen_canvas,
-                                    target_canvas,
-                                    report_on_console
-                                );
-                                return first_abstract_pipeline(
-                                    abstract_pipeline
-                                );
-                            }
                         }
                     };
 
@@ -347,11 +385,14 @@ void main(){
 
 class render{
     #rd = null;
+    #closed = false;
+    #report_on_console;
     constructor(width,height,report_on_console = true){
+        this.#report_on_console = report_on_console;
         this.#rd = webgl2.abstract_render(
             width,
             height,
-            report_on_console
+            this.#report_on_console
         );
     }
     draw(
@@ -360,15 +401,34 @@ class render{
         blend_mode = webgl2.direct_draw,
         target_canvas = webgl2.no_export
     ){
-        if(this.#rd === null){
-            //PASS
-        }else{
-            this.#rd = this.#rd(
+        this.#rd = this.#rd?.(
+            image_bit_map,
+            color_mat,
+            blend_mode,
+            target_canvas
+        ) ?? null;
+        if(this.#rd === null && this.#closed === false){
+            this.#rd = webgl2.abstract_render(
+                image_bit_map.width,
+                image_bit_map.height,
+                this.#report_on_console
+            );
+            this.#rd = this.#rd?.(
                 image_bit_map,
                 color_mat,
                 blend_mode,
                 target_canvas
-            );
+            ) ?? null;
+            this.#closed = (this.#rd === null);
+            if(this.#closed === true){
+                alert(
+                    "Please Reload the Website"
+                );
+            }else{
+                //PASS
+            }
+        }else{
+            //PASS
         }
     }
 }
@@ -426,5 +486,6 @@ class direct extends webgl2{
 
 
 }
+
 
 
