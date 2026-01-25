@@ -372,7 +372,7 @@ class dubois extends webgl2{
     }
 
     static anaglyph(width,height){
-        let rd = webgl2.abstract_render(width,height);
+        let rd = webgl2.abstract_render(width,height,false);
         return (target_canvas,left_image,right_image) =>{
             rd.then(
                  f => f(left_image,dubois.#left_mat())
@@ -387,7 +387,7 @@ class dubois extends webgl2{
 class direct extends webgl2{
 
     static draw(width,height){
-        let rd = webgl2.abstract_render(width,height);
+        let rd = webgl2.abstract_render(width,height,false);
         return (target_canvas,image) =>{
             rd.then(
                 f => f(
@@ -402,3 +402,4 @@ class direct extends webgl2{
 
 
 }
+
