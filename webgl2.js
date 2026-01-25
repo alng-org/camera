@@ -452,37 +452,52 @@ class render{
 
 class dubois extends webgl2{
 
-    static #left_mat(){
+    static #left_mat(inv_alpha){
         return webgl2.color_mat(
                     webgl2.new_color(0.456,0.5,0.176,0),
                     webgl2.new_color(0,0,0,0),
                     webgl2.new_color(0,0,0,0),
-                    webgl2.new_color(0,0,0,1)
+                    webgl2.new_color(0,0,0,1 / inv_alpha)
                 );
     }
     
-    static #right_mat(){
+    static #right_mat(inv_alpha){
         return  webgl2.color_mat(
                     webgl2.new_color(-0.043,-0.088,-0.002,0),
                     webgl2.new_color(0.378,0.734,-0.018,0),
                     webgl2.new_color(-0.072,0.212,1.131,0),
-                    webgl2.new_color(0,0,0,1)
+                    webgl2.new_color(0,0,0,1 / inv_alpha)
                 );
     }
 
     static anaglyph(width,height){
         let rd = new render(width,height);
-        return (target_canvas,left_image,right_image) =>{
-            rd.draw(
-                left_image,
-                dubois.#left_mat()
-            ).draw(
-                right_image,
-                dubois.#right_mat(),
-                webgl2.screen,
-                target_canvas
-            );
-        };
+        return (target_canvas) => {
+            return {
+                draw_left_first: 
+                    (left_image,right_image) =>
+                        rd.draw(
+                            left_image,
+                            dubois.#left_mat(1)
+                        ).draw(
+                            right_image,
+                            dubois.#right_mat(2),
+                            webgl2.screen,
+                            target_canvas
+                        ),
+                draw_right_first:
+                    (left_image,right_image) =>
+                        rd.draw(
+                            right_image,
+                            dubois.#right_mat(1)
+                        ).draw(
+                            left_image,
+                            dubois.#left_mat(2),
+                            webgl2.screen,
+                            target_canvas
+                        )
+            };
+        };        
     }
 
 }
@@ -503,8 +518,3 @@ class direct extends webgl2{
 
 
 }
-
-
-
-
-
