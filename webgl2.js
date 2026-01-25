@@ -175,14 +175,12 @@ void main(){
             WebGL2_context.pixelStorei(WebGL2_context.UNPACK_ALIGNMENT,1);
             return (image_bit_map,color_mat) => {
                 if(
-                    typeof(image_bit_map) === "object" &&
-                    image_bit_map.constructor === ImageBitmap.prototype.constructor &&
+                    image_bit_map instanceof ImageBitmap &&
                     image_bit_map.width === tex_width &&
                     image_bit_map.height === tex_height
                 ){
                     if(
-                        typeof(color_mat) === "object" && 
-                        color_mat.constructor ===Float32Array.prototype.constructor &&
+                        color_mat instanceof Float32Array &&
                         color_mat.length === 16
                     ){
                         WebGL2_context.activeTexture(WebGL2_context.TEXTURE0);
@@ -329,8 +327,7 @@ void main(){
         if(
             [new_red,new_green,new_blue,new_alpha].every(
                 (t) =>  
-                    typeof(t) === "object" && 
-                    t.constructor ===Float32Array.prototype.constructor &&
+                    t instanceof Float32Array &&
                     t.length === 4
             ) === true
         ){
@@ -402,4 +399,5 @@ class direct extends webgl2{
 
 
 }
+
 
