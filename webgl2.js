@@ -175,12 +175,12 @@ void main(){
             WebGL2_context.pixelStorei(WebGL2_context.UNPACK_ALIGNMENT,1);
             return (image_bit_map,color_mat) => {
                 if(
-                    image_bit_map instanceof ImageBitmap &&
+                    //image_bit_map instanceof ImageBitmap &&
                     image_bit_map.width === tex_width &&
                     image_bit_map.height === tex_height
                 ){
                     if(
-                        color_mat instanceof Float32Array &&
+                        //color_mat instanceof Float32Array &&
                         color_mat.length === 16
                     ){
                         WebGL2_context.activeTexture(WebGL2_context.TEXTURE0);
@@ -327,7 +327,7 @@ void main(){
         if(
             [new_red,new_green,new_blue,new_alpha].every(
                 (t) =>  
-                    t instanceof Float32Array &&
+                    //t instanceof Float32Array &&
                     t.length === 4
             ) === true
         ){
@@ -399,5 +399,6 @@ class direct extends webgl2{
 
 
 }
+
 
 
