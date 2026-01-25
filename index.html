@@ -164,8 +164,12 @@
             ){
                 return track.applyConstraints(
                     {
-                        width: cwidth,
-                        height: cheight,
+                        width: {
+                            exact: cwidth
+                        },
+                        height: {
+                            exact: cheight
+                        },
                         advanced: [{
                             zoom: czoom,
                             whiteBalanceMode: "continuous",
@@ -248,3 +252,4 @@ onload="boot(
     <div id="info"></div>
     <canvas id="img_canvas"></canvas>
 </body>
+
