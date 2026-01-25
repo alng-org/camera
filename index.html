@@ -52,12 +52,20 @@
                 this.#tools = tools;
             }
             static render(ref){
+                let next_render = () => {
+                    requestAnimationFrame(
+                        () => rAF.render(ref)
+                    );
+                };
                 if(
                     ref.#left === null &&
                     ref.#right === null
                 ){
                     ref.#tools.gFrame(
-                        ref.#tools.preview_2d
+                        (img) => {
+                            ref.#tools.preview_2d(img);
+                            next_render();
+                        }
                     );
                 }else if(
                     ref.#left !== null &&
@@ -67,17 +75,18 @@
                         ref.#left,
                         ref.#right
                     );
+                    next_render();
                 }else{
                     ref.#tools.gFrame(
-                        (img) => ref.#tools.preview_3d(
-                            ref.#left ?? img,
-                            ref.#right ?? img
-                        )
+                        (img) => {
+                            ref.#tools.preview_3d(
+                                ref.#left ?? img,
+                                ref.#right ?? img
+                            );
+                            next_render();
+                        }
                     );
                 }
-                requestAnimationFrame(
-                    () => rAF.render(ref)
-                );
             };
             
             capture_left(){
@@ -234,6 +243,7 @@ onload="boot(
     <div id="info"></div>
     <canvas id="img_canvas"></canvas>
 </body>
+
 
 
 
