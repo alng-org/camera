@@ -218,10 +218,9 @@ void main(){
     static abstract_render(width,height,report_on_console = true){
         let offscreen_canvas = new OffscreenCanvas(width,height);
         let gl = offscreen_canvas.getContext("webgl2");
-        let reject = Promise.reject("See more elsewhere");
         if(gl === null){
             webgl2.#report("WebGL2 is not support",report_on_console);
-            return reject;
+            return null;
         }else{
             let vs_src = webgl2.#universal_vertex_shader_src();
             let fs_src = webgl2.#direct_fragment_shader_src();
@@ -232,7 +231,7 @@ void main(){
                 report_on_console
             );
             if(program === null){
-                return reject;
+                return null;
             }else{
                 let vao = webgl2.#vao(
                     gl,
@@ -240,7 +239,7 @@ void main(){
                     report_on_console
                 );
                 if(vao === null){
-                    return reject;
+                    return null;
                 }else{
                     gl.useProgram(program);
                     gl.bindVertexArray(vao);
@@ -272,7 +271,7 @@ void main(){
                         target_canvas = webgl2.no_export
                     ) => {
                         if(fcopy(image_bit_map,color_mat) === null){
-                            return reject;
+                            return null;
                         }else{
                             webgl2.#draw(
                                 gl,
@@ -280,30 +279,23 @@ void main(){
                                 blend_mode
                             );
                             if(target_canvas === webgl2.no_export){
-                                return Promise.resolve(
-                                    abstract_pipeline
-                                );
+                                return abstract_pipeline;
                             }else{
                                 webgl2.#export(
                                     offscreen_canvas,
                                     target_canvas,
                                     report_on_console
                                 );
-                                return Promise.resolve(
-                                    first_abstract_piprline(
-                                        abstract_pipeline
-                                    )
+                                return first_abstract_piprline(
+                                    abstract_pipeline
                                 );
                             }
                         }
                     };
 
-                    return Promise.resolve(
-                        first_abstract_piprline(
-                            abstract_pipeline
-                        )
+                    return first_abstract_piprline(
+                        abstract_pipeline
                     );
-
                 }
             }
         }
@@ -352,6 +344,35 @@ void main(){
 
 }
 
+
+class render{
+    #rd = null;
+    constructor(width,height,report_on_console = true){
+        this.#rd = webgl2.abstract_render(
+            width,
+            height,
+            report_on_console
+        );
+    }
+    draw(
+        image_bit_map,
+        color_mat = webgl2.color_id_mat,
+        blend_mode = webgl2.direct_draw,
+        target_canvas = webgl2.no_export
+    ){
+        if(this.#rd === null){
+            //PASS
+        }else{
+            this.#rd = this.#rd(
+                image_bit_map,
+                color_mat,
+                blend_mode,
+                target_canvas
+            );
+        }
+    }
+}
+
 class dubois extends webgl2{
 
     static #left_mat(){
@@ -373,11 +394,11 @@ class dubois extends webgl2{
     }
 
     static anaglyph(width,height){
-        let rd = webgl2.abstract_render(width,height,false);
+        let rd = new render(width,height,false);
         return (target_canvas,left_image,right_image) =>{
-            rd.then(
+            rd.draw(
                  f => f(left_image,dubois.#left_mat())
-            ).then(
+            ).draw(
                 f => f(right_image,dubois.#right_mat(),webgl2.screen,target_canvas)
             );
         };
@@ -388,9 +409,9 @@ class dubois extends webgl2{
 class direct extends webgl2{
 
     static draw(width,height){
-        let rd = webgl2.abstract_render(width,height,false);
+        let rd = new render(width,height,false);
         return (target_canvas,image) =>{
-            rd.then(
+            rd.draw(
                 f => f(
                     image,
                     webgl2.color_id_mat,
@@ -403,7 +424,3 @@ class direct extends webgl2{
 
 
 }
-
-
-
-
