@@ -64,6 +64,7 @@
                     ref.#tools.gFrame(
                         (img) => {
                             ref.#tools.preview_2d(img);
+                            img.close();
                             next_render();
                         }
                     );
@@ -83,6 +84,7 @@
                                 ref.#left ?? img,
                                 ref.#right ?? img
                             );
+                            img.close();
                             next_render();
                         }
                     );
@@ -106,7 +108,9 @@
             }
             
             clear(){
+                this.#left.close();
                 this.#left = null;
+                this.#right.close();
                 this.#right = null;
             }
         }
@@ -243,6 +247,7 @@ onload="boot(
     <div id="info"></div>
     <canvas id="img_canvas"></canvas>
 </body>
+
 
 
 
