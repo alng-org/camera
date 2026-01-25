@@ -397,9 +397,13 @@ class dubois extends webgl2{
         let rd = new render(width,height,false);
         return (target_canvas,left_image,right_image) =>{
             rd.draw(
-                 f => f(left_image,dubois.#left_mat())
+                left_image,
+                dubois.#left_mat()
             ).draw(
-                f => f(right_image,dubois.#right_mat(),webgl2.screen,target_canvas)
+                right_image,
+                dubois.#right_mat(),
+                webgl2.screen,
+                target_canvas
             );
         };
     }
@@ -412,15 +416,14 @@ class direct extends webgl2{
         let rd = new render(width,height,false);
         return (target_canvas,image) =>{
             rd.draw(
-                f => f(
-                    image,
-                    webgl2.color_id_mat,
-                    webgl2.direct_draw,
-                    target_canvas
-                )
+                image,
+                webgl2.color_id_mat,
+                webgl2.direct_draw,
+                target_canvas
             );
         };
     }
 
 
 }
+
