@@ -141,6 +141,14 @@
                 (tools) => {
                     let c = new rAF(tools);
                     rAF.render(c);
+
+                    document.body.addEventListener(
+                        "click",
+                        (e) => {
+                            alert("test");
+                        }
+                    );
+
                     
                 }
         ).catch(
@@ -265,6 +273,7 @@ onload="boot(
     <div id="info"></div>
     <canvas id="img_canvas"></canvas>
 </body>
+
 
 
 
