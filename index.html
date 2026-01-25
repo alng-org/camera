@@ -51,31 +51,33 @@
             constructor(tools){
                 this.#tools = tools;
             }
-            render = () => {
+            static render(ref){
                 if(
-                    this.#left === null &&
-                    this.#right === null
+                    ref.#left === null &&
+                    ref.#right === null
                 ){
-                    this.#tools.gFrame(
-                        this.#tools.preview_2d
+                    ref.#tools.gFrame(
+                        ref.#tools.preview_2d
                     );
                 }else if(
-                    this.#left !== null &&
-                    this.#right !== null
+                    ref.#left !== null &&
+                    ref.#right !== null
                 ){
-                    this.#tools.preview_3d(
-                        this.#left,
-                        this.#right
+                    ref.#tools.preview_3d(
+                        ref.#left,
+                        ref.#right
                     );
                 }else{
-                    this.#tools.gFrame(
-                (img) => this.#tools.preview_3d(
-                            this.#left ?? img,
-                            this.#right ?? img
+                    ref.#tools.gFrame(
+                        (img) => ref.#tools.preview_3d(
+                            ref.#left ?? img,
+                            ref.#right ?? img
                         )
                     );
                 }
-                requestAnimationFrame(this.render);
+                requestAnimationFrame(
+                    () => rAF.render(ref)
+                );
             };
             
             capture_left(){
@@ -125,7 +127,7 @@
         ).then(
                 (tools) => {
                     let c = new rAF(tools);
-                    c.render();
+                    rAF.render(c);
                     
                 }
         ).catch(
@@ -234,6 +236,7 @@ onload="boot(
     <div id="info"></div>
     <canvas id="img_canvas"></canvas>
 </body>
+
 
 
 
