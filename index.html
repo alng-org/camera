@@ -168,7 +168,7 @@
                         ref.#replace(null);
                         img?.close();
                         ref.#handle = rAF.#snooze;
-                        rAF.saved(ref,canvas)
+                        rAF.#saved(ref,canvas)
                            .finally(
                                () => {
                                    ref.#handle = rAF.#original;
@@ -202,7 +202,7 @@
                 return canvas.convertToBlob(
                     { type: "image/png" }
                 ).then(
-                    (blob) => rAF.write_file(ref,blob)
+                    (blob) => rAF.#write_file(ref,blob)
                 );
             }
             static #write_file(ref,blob){
@@ -395,4 +395,5 @@ onload="boot(
     <div id="info"></div>
     <canvas id="img_canvas"></canvas>
 </body>
+
 
