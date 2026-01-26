@@ -74,6 +74,14 @@
                 return (ref) => {
                     ref.#tools.gFrame(
                         (right) => {
+
+                            if(left.width === 0){
+                                alert("test");
+                            }
+
+
+
+                            
                             ref.#tools
                                .preview_3d
                                .draw_left_first(
@@ -395,6 +403,7 @@ onload="boot(
     <div id="info"></div>
     <canvas id="img_canvas"></canvas>
 </body>
+
 
 
 
