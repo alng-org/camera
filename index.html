@@ -111,7 +111,7 @@
             
             static #next_render(ref){
                 requestAnimationFrame(
-                    () => rAF.render(ref)
+                    () => ref.#handle(ref)
                 );
             }
             static render(ref){
@@ -275,7 +275,7 @@
                     document.body.addEventListener(
                         "click",
                         (e) => {
-                            alert("test");
+                            rAF.capture_left_first(c);
                         }
                     );
 
@@ -395,6 +395,7 @@ onload="boot(
     <div id="info"></div>
     <canvas id="img_canvas"></canvas>
 </body>
+
 
 
 
