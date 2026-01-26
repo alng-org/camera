@@ -74,14 +74,6 @@
                 return (ref) => {
                     ref.#tools.gFrame(
                         (right) => {
-
-                            if(left.width === 0){
-                                alert("test");
-                            }
-
-
-
-                            
                             ref.#tools
                                .preview_3d
                                .draw_left_first(
@@ -254,7 +246,7 @@
         }
 
         function init(canvas,info){ 
-            document.body.requestFullscreen().then(
+            keep_wake().then(
             () => {
                 return navigator.mediaDevices.getUserMedia(
                     {
@@ -287,7 +279,18 @@
                         }
                     );
 
-                    
+                    document.addEventListener(
+                        'visibilitychange',
+                        () => {
+                             if (
+                                 document.visibilityState === 'visible'
+                             ){
+                                 keep_wake().catch((e)=>alert(e));
+                             }else{
+                                 //PASS
+                             }
+                        }
+                    );
                 }
         ).catch(
                 (err) => {
@@ -363,6 +366,17 @@
                 );
             }
         }
+
+        let lock;
+        function keep_wake(){
+            return document.body.requestFullscreen().then(
+                () => navigator.wakeLock.request('screen')
+            ).then(
+                (wake_lock) => {
+                    lovk = wake_lock;
+                }
+            );
+        }
         
     </script>
     <script src="webgl2.js"></script>
@@ -403,6 +417,7 @@ onload="boot(
     <div id="info"></div>
     <canvas id="img_canvas"></canvas>
 </body>
+
 
 
 
