@@ -49,6 +49,7 @@
             #tools;
             #handle = rAF.#original;
             #capture;
+            #directory = null;
             
             constructor(tools){
                 this.#tools = tools;
@@ -159,7 +160,7 @@
                 }
             }
 
-            static capture_other(ref){
+            static capture_other(ref,canvas){
                 if(ref.#capture !== rAF.#no_capture){
                     //PASS
                 }else{
@@ -167,9 +168,79 @@
                         ref.#replace(null);
                         img?.close();
                         ref.#handle = rAF.#snooze;
-                        ref.#capture = rAF.#no_capture;
+                        rAF.saved(ref,canvas)
+                           .finally(
+                               () => {
+                                   ref.#handle = rAF.#original;
+                                   ref.#capture = rAF.#no_capture;
+                               }
+                            );
                     };
                 }
+            }
+
+            static #dir(ref){
+                if(ref.#directory !== null){
+                    return Promise.resolve(
+                        ref.#directory
+                    );
+                }else{
+                    window.showDirectoryPicker(
+                        {
+                            mode: 'readwrite'
+                        }
+                    ).then(
+                        (folder) => {
+                            ref.#directory = folder;
+                            return ref.#directory;
+                        }
+                    );
+                }
+            }
+            
+            static #saved(ref,canvas){
+                return canvas.convertToBlob(
+                    { type: "image/png" }
+                ).then(
+                    (blob) => rAF.write_file(ref,blob)
+                );
+            }
+            static #write_file(ref,blob){
+                let name = 
+                    `3D_Image [${new Date().getTime()}].png`;
+                let err_msg = (e) => 
+                    `Cannot write file,due to:\n${e}`;
+                
+                rAF.#dir(ref)
+                   .then(
+                       (directory) => {
+                           return directory.getFileHandle(
+                               name,
+                               { create: true }
+                           );
+                       }
+                    ).then(
+                       (file) => file.createWritable()
+                    ).then(
+                       async (writeable) => {
+                           try{
+                               await writeable.write(blob);
+                           } catch(e){
+                               alert(
+                                   err_msg(e)
+                               );
+                           } finally{
+                               await writeable.close();
+                           }
+                           return null;
+                       }
+                    ).catch(
+                       (e) => {
+                           alert(
+                               err_msg(e)
+                           )
+                       }
+                   );
             }
             
         }
@@ -284,14 +355,6 @@
                 );
             }
         }
-
-        function saved_img(canvas){
-            let img = canvas.toDataURL("image/png",1.0);
-            let a = document.createElement("a");
-            a.href = img;
-            a.download = `3D_Image [${new Date().getTime()}]`;
-            a.click();
-        }
         
     </script>
     <script src="webgl2.js"></script>
@@ -332,11 +395,4 @@ onload="boot(
     <div id="info"></div>
     <canvas id="img_canvas"></canvas>
 </body>
-
-
-
-
-
-
-
 
