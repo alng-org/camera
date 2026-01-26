@@ -45,8 +45,7 @@
 
 
         class rAF{
-            #left = null;
-            #right = null;
+            #img = null;
             #tools;
             #handle = rAF.#original;
             constructor(tools){
@@ -100,22 +99,29 @@
             static #snooze(ref,next_render){
                     next_render();
             }
-              static render(ref){
+
+            #clear(){
+                this.#img?.close();
+                this.#img = null;
+            }
+            
+            static render(ref){
                 let next_render = () => {
                     requestAnimationFrame(
                         () => rAF.render(ref)
                     );
                 };
                 ref.#handle(ref,next_render);
-            };
+            }
             
             capture_left(){
                 this.#tools.gFrame(
                     (img) => {
-                        this.#left = img;
+                        this.#clear();
+                        this.#img = img;
                         this.#handle = 
-                            rAF.draw_left_first(
-                                this.#left
+                            rAF.#draw_left_first(
+                                this.#img
                             );
                     }
                 );
@@ -124,21 +130,29 @@
             capture_right(){
                 this.#tools.gFrame(
                     (img) => {
-                        this.#right = img;
+                        this.#clear();
+                        this.#img = img;
                         this.#handle = 
                             rAF.#draw_right_first(
-                                this.#right
+                                this.#img
                             );
                     }
                 );
             }
-            
-            clear(){
-                this.#left?.close();
-                this.#left = null;
-                this.#right?.close();
-                this.#right = null;
+
+            capture_other(){
+                this.#tools.gFrame(
+                    (img) => {
+                        let handle = this.#handle
+                        handle(
+                            this.#img
+                        );
+                        this.#handle = 
+                            
+                    }
+                );
             }
+            
         }
 
         function init(canvas,info){ 
@@ -299,6 +313,7 @@ onload="boot(
     <div id="info"></div>
     <canvas id="img_canvas"></canvas>
 </body>
+
 
 
 
