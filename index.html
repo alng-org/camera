@@ -48,22 +48,29 @@
             #img = null;
             #tools;
             #handle = rAF.#original;
+            #capture;
+            
             constructor(tools){
                 this.#tools = tools;
             }
+
+            #replace(img){
+                this.#img?.close();
+                this.#img = img;
+            }
             
-            static #original(ref,next_render){
+            static #original(ref){
                 ref.#tools.gFrame(
                     (img) => {
                         ref.#tools.preview_2d(img);
-                        img.close();
-                        next_render();
+                        ref.#capture(ref,img);
+                        rAF.#next_render(ref);
                     }
                 );
             }
 
             static #draw_left_first(left){
-                return (ref,next_render) => {
+                return (ref) => {
                     ref.#tools.gFrame(
                         (right) => {
                             ref.#tools
@@ -72,15 +79,15 @@
                                    left,
                                    right
                                );
-                            right.close();
-                            next_render();
+                            ref.#capture(ref,right);
+                            rAF.#next_render(ref);
                         }
                     );
                 }
             }
 
             static #draw_right_first(right){
-                return (ref,next_render) => {
+                return (ref) => {
                     ref.#tools.gFrame(
                         (left) => {
                             ref.#tools
@@ -89,68 +96,80 @@
                                    left,
                                    right
                                );
-                            left.close();
-                            next_render();
+                            ref.#capture(ref,left);
+                            rAF.#next_render(ref);
                         }
                     );
                 }
             }
 
-            static #snooze(ref,next_render){
-                    next_render();
-            }
-
-            #clear(){
-                this.#img?.close();
-                this.#img = null;
+            static #snooze(ref){
+                ref.#capture(ref);
+                rAF.#next_render(ref);
             }
             
+            static #next_render(ref){
+                requestAnimationFrame(
+                    () => rAF.render(ref)
+                );
+            }
             static render(ref){
-                let next_render = () => {
-                    requestAnimationFrame(
-                        () => rAF.render(ref)
-                    );
-                };
-                ref.#handle(ref,next_render);
-            }
-            
-            capture_left(){
-                this.#tools.gFrame(
-                    (img) => {
-                        this.#clear();
-                        this.#img = img;
-                        this.#handle = 
-                            rAF.#draw_left_first(
-                                this.#img
-                            );
-                    }
-                );
-            }
-            
-            capture_right(){
-                this.#tools.gFrame(
-                    (img) => {
-                        this.#clear();
-                        this.#img = img;
-                        this.#handle = 
-                            rAF.#draw_right_first(
-                                this.#img
-                            );
-                    }
-                );
+                ref.#handle(ref);
             }
 
-            capture_other(){
-                this.#tools.gFrame(
-                    (img) => {
-                        let handle = this.#handle
-                        handle(
-                            this.#img
-                        );
-                        this.#handle = 
-                            
-                    }
-                );
+            static #no_capture(ref,img = null){
+                img?.close();
+            }
+            
+            static capture_left(ref){
+                if(ref.#capture !== rAF.#no_capture){
+                    //PASS
+                }else{
+                    ref.#capture = (ref,img = null) => {
+                        if(img === null){
+                            //PASS
+                        }else{
+                            ref.#replace(img);
+                            ref.#handle = 
+                                rAF.#draw_left_first(
+                                    ref.#img
+                                );
+                        }
+                        ref.#capture = rAF.#no_capture;
+                    };
+                }
+            }
+
+            static capture_right(ref){
+                if(ref.#capture !== rAF.#no_capture){
+                    //PASS
+                }else{
+                    ref.#capture = (ref,img = null) => {
+                        if(img === null){
+                            //PASS
+                        }else{
+                            ref.#replace(img);
+                            ref.#handle = 
+                                rAF.#draw_right_first(
+                                    ref.#img
+                                );
+                        }
+                        ref.#capture = rAF.#no_capture;
+                    };
+                }
+            }
+
+            static capture_other(ref){
+                if(ref.#capture !== rAF.#no_capture){
+                    //PASS
+                }else{
+                    ref.#capture = (ref,img = null) => {
+                        ref.#replace(null);
+                        img?.close();
+                        ref.#handle = rAF.#snooze;
+                        ref.#capture = rAF.#no_capture;
+                    };
+                }
             }
             
         }
@@ -313,6 +332,7 @@ onload="boot(
     <div id="info"></div>
     <canvas id="img_canvas"></canvas>
 </body>
+
 
 
 
