@@ -49,7 +49,6 @@
             #tools;
             #handle = rAF.#original;
             #capture = rAF.#no_capture;
-            #directory = null;
             
             constructor(tools){
                 this.#tools = tools;
@@ -194,25 +193,6 @@
                     };
                 }
             }
-
-            static #dir(ref){
-                if(ref.#directory !== null){
-                    return Promise.resolve(
-                        ref.#directory
-                    );
-                }else{
-                    return window.showDirectoryPicker(
-                        {
-                            mode: 'readwrite'
-                        }
-                    ).then(
-                        (folder) => {
-                            ref.#directory = folder;
-                            return ref.#directory;
-                        }
-                    );
-                }
-            }
             
             static #saved(ref,canvas){
                 return new Promise(
@@ -231,45 +211,18 @@
                         );
                     }
                 ).then(
-                    (blob) => rAF.#write_file(ref,blob)
+                    (blob) => rAF.#download_file(ref,blob)
                 );
             }
-            static #write_file(ref,blob){
+            static #download_file(ref,blob){
                 let name = 
                     `3D_Image [${new Date().getTime()}].png`;
-                let err_msg = (e) => 
-                    `Cannot write file,due to:\n${e}`;
-                
-                rAF.#dir(ref)
-                   .then(
-                       (directory) => {
-                           return directory.getFileHandle(
-                               name,
-                               { create: true }
-                           );
-                       }
-                    ).then(
-                       (file) => file.createWritable()
-                    ).then(
-                       async (writeable) => {
-                           try{
-                               await writeable.write(blob);
-                           } catch(e){
-                               alert(
-                                   err_msg(e)
-                               );
-                           } finally{
-                               await writeable.close();
-                           }
-                           return null;
-                       }
-                    ).catch(
-                       (e) => {
-                           alert(
-                               err_msg(e)
-                           )
-                       }
-                   );
+                let url = URL.createObjectURL(blob);
+                let a = document.createElement('a');
+                a.href = url;
+                a.download = name;
+                a.click();
+                URL.revokeObjectURL(url);
             }
             
         }
@@ -525,5 +478,6 @@ onload="boot(
     <div id="info"></div>
     <canvas id="img_canvas"></canvas>
 </body>
+
 
 
