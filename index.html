@@ -405,6 +405,49 @@
                 }
             );
         }
+        function fmotion(fleft,fright,fdefault) {
+            let AB_sup = 0.2; //positive
+            let p_inf = 0.3; //positive
+            let p_sup = 0.8; //positive
+            let fcond = (p, A, B, Fpositive, Fnegative, Fdefault) => {
+                let P = Math.abs(p);
+                A = Math.abs(A);
+                B = Math.abs(B);
+                if(
+                    (p_inf < P && P < p_sup) &&
+                    (A < AB_sup) &&
+                    (B < AB_sup)
+                ){
+                    if(p > 0){
+                        return Fpositive();
+                    }else if(p < 0){
+                        return Fnegative();
+                    }else{
+                        return Fdefault();
+                    }
+                }else{
+                    return Fdefault();
+                }
+            };
+            return ({acceleration}) => {
+                let x = acceleration.x.toFixed(2);
+                let y = acceleration.x.toFixed(2);
+                let z = acceleration.x.toFixed(2);
+                
+                switch (screen.orientation.type) {
+                    case "portrait-primary":
+                        return fcond(x, y, z, fright, fleft, fdefault);
+                    case "portrait-secondary":
+                        return fcond(x, y, z, fleft, fright, fdefault);
+                    case "landscape-primary":
+                        return fcond(y, x, z, fleft, fright, fdefault);
+                    case "landscape-secondary":
+                        return fcond(y, x, z, fright, fleft, fdefault);
+                    default:
+                        return fdefault();
+                }
+            };
+        }
         
     </script>
     <script src="webgl2.js"></script>
@@ -445,6 +488,7 @@ onload="boot(
     <div id="info"></div>
     <canvas id="img_canvas"></canvas>
 </body>
+
 
 
 
