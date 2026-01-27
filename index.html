@@ -161,7 +161,10 @@
             }
 
             static capture_other(ref,canvas){
-                if(ref.#capture !== rAF.#no_capture){
+                if(
+                    ref.#capture !== rAF.#no_capture &&
+                    ref.#img !== null
+                ){
                     //PASS
                 }else{
                     ref.#capture = (ref,img = null) => {
@@ -285,30 +288,44 @@
                     let c = new rAF(tools);
                     rAF.render(c);
 
+                    let cancel = () => rAF.capture_cancel(c);
+                    let error = () => {
+                        alert(
+                            "Capture Failed: No Motion/Orientation Data"
+                        ); //todo
+                        cancel();
+                    };
+                    let finish = () => rAF.capture_other(c,canvas);
                     document.body.addEventListener(
                         "click",
                         ({clientX}) => {
                             let half = 
                                 document.documentElement.clientWidth / 2;
                             if(clientX < half){
-                                alert("left");
+                                rAF.capture_left(c);
+                                devicemotion_then(
+                                    cancel,
+                                    finish,
+                                    cancel,
+                                    error
+                                );
+                                
                             }else if(clientX > half){
-                                alert("right");
+                                rAF.capture_right(c);
+                                devicemotion_then(
+                                    finish,
+                                    cancel,
+                                    cancel,
+                                    error
+                                );
                             }else{
-                                alert("mid");
+                                //PASS
                             }
-                            /*
-                            rAF.capture_left(c);
-                            window.addEventListener(
-                                'devicemotion',
-                                //,
-                                { once:true }
-                            );*/
                         }
                     );
                     screen.orientation.addEventListener(
                         'change',
-                        () => rAF.capture_cancel(c)
+                        cancel
                     );
                 }
         ).catch(
@@ -396,11 +413,11 @@
                 }
             );
         }
-        function fmotion(fleft,fright,fdefault) {
+        function devicemotion_then(fleft,fright,fzero,fdefault) {
             let AB_sup = 15; //N (Natural numbers)
             let p_inf = 20; //N
             let p_sup = 100; //N
-            let fcond = (p, A, B, Fpositive, Fnegative, Fdefault) => {
+            let fcond = (p, A, B, Fpositive, Fnegative, Fzero, Fdefault) => {
                 let P = Math.abs(p);
                 A = Math.abs(A);
                 B = Math.abs(B);
@@ -413,6 +430,8 @@
                         return Fpositive();
                     }else if(p < 0){
                         return Fnegative();
+                    }else if(p === 0){
+                        return Fzero();
                     }else{
                         return Fdefault();
                     }
@@ -420,24 +439,28 @@
                     return Fdefault();
                 }
             };
-            return ({acceleration}) => {
-                let x = Math.round(acceleration.x * 100);
-                let y = Math.round(acceleration.y * 100);
-                let z = Math.round(acceleration.z * 100);
-                
-                switch (screen.orientation.type) {
-                    case "portrait-primary":
-                        return fcond(x, y, z, fright, fleft, fdefault);
-                    case "portrait-secondary":
-                        return fcond(x, y, z, fleft, fright, fdefault);
-                    case "landscape-primary":
-                        return fcond(y, x, z, fleft, fright, fdefault);
-                    case "landscape-secondary":
-                        return fcond(y, x, z, fright, fleft, fdefault);
-                    default:
-                        return fdefault();
-                }
-            };
+            window.addEventListener(
+                'devicemotion',
+                ({acceleration}) => {
+                    let x = Math.round(acceleration.x * 100);
+                    let y = Math.round(acceleration.y * 100);
+                    let z = Math.round(acceleration.z * 100);
+                    
+                    switch (screen.orientation.type) {
+                        case "portrait-primary":
+                            return fcond(x, y, z, fright, fleft, fzero, fdefault);
+                        case "portrait-secondary":
+                            return fcond(x, y, z, fleft, fright, fzero, fdefault);
+                        case "landscape-primary":
+                            return fcond(y, x, z, fleft, fright, fzero, fdefault);
+                        case "landscape-secondary":
+                            return fcond(y, x, z, fright, fleft, fzero, fdefault);
+                        default:
+                            return fdefault();
+                    }
+                },
+                { once:true }
+            );
         }
         
     </script>
@@ -479,6 +502,7 @@ onload="boot(
     <div id="info"></div>
     <canvas id="img_canvas"></canvas>
 </body>
+
 
 
 
