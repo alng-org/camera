@@ -287,7 +287,20 @@
 
                     document.body.addEventListener(
                         "click",
-                        (e) => rAF.capture_left(c)
+                        (e) => {
+                            rAF.capture_left(c);
+                            window.addEventListener(
+                                'devicemotion',
+                                (e)=>{
+                                    let t = e.acceleration;
+                                    let x = t.x.toFixed(2);
+                                    let y = t.y.toFixed(2);
+                                    let z = t.z.toFixed(2);
+                                    info.innerText =`(${x}, ${y}, ${z})`;
+                                },
+                                { once:true }
+                            );
+                        }
                     );
 
                     document.addEventListener(
@@ -432,6 +445,7 @@ onload="boot(
     <div id="info"></div>
     <canvas id="img_canvas"></canvas>
 </body>
+
 
 
 
