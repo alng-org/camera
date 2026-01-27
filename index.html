@@ -215,9 +215,23 @@
             }
             
             static #saved(ref,canvas){
-                return canvas.toBlob(
-                    (blob) => rAF.#write_file(ref,blob),
-                    "image/png"
+                return new Promise(
+                    (resolve, reject) => {
+                        canvas.toBlob(
+                            (blob) => {
+                                if(blob !== null){
+                                    resolve(blob);
+                                }else{
+                                    reject(
+                                        new Error("PNG Export Error")
+                                    );
+                                }
+                            },
+                            "image/png"
+                        );
+                    }
+                ).then(
+                    (blob) => rAF.#write_file(ref,blob)
                 );
             }
             static #write_file(ref,blob){
@@ -511,3 +525,4 @@ onload="boot(
     <div id="info"></div>
     <canvas id="img_canvas"></canvas>
 </body>
+
