@@ -179,6 +179,19 @@
                 }
             }
 
+            static capture_cancel(ref){
+                if(ref.#capture !== rAF.#no_capture){
+                    //PASS
+                }else{
+                    ref.#capture = (ref,img = null) => {
+                        ref.#replace(null);
+                        img?.close();
+                        ref.#handle = rAF.#original;
+                        ref.#capture = rAF.#no_capture;
+                    };
+                }
+            }
+
             static #dir(ref){
                 if(ref.#directory !== null){
                     return Promise.resolve(
@@ -274,9 +287,7 @@
 
                     document.body.addEventListener(
                         "click",
-                        (e) => {
-                            rAF.capture_left(c);
-                        }
+                        (e) => rAF.capture_left(c)
                     );
 
                     document.addEventListener(
@@ -290,6 +301,10 @@
                                  //PASS
                              }
                         }
+                    );
+                    screen.orientation.addEventListener(
+                        'change',
+                        () => rAF.capture_cancel(c)
                     );
                 }
         ).catch(
@@ -417,6 +432,7 @@ onload="boot(
     <div id="info"></div>
     <canvas id="img_canvas"></canvas>
 </body>
+
 
 
 
