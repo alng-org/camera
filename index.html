@@ -406,9 +406,9 @@
             );
         }
         function fmotion(fleft,fright,fdefault) {
-            let AB_sup = 0.2; //positive
-            let p_inf = 0.3; //positive
-            let p_sup = 0.8; //positive
+            let AB_sup = 20; //N (Natural numbers)
+            let p_inf = 30; //N
+            let p_sup = 80; //N
             let fcond = (p, A, B, Fpositive, Fnegative, Fdefault) => {
                 let P = Math.abs(p);
                 A = Math.abs(A);
@@ -430,9 +430,9 @@
                 }
             };
             return ({acceleration}) => {
-                let x = acceleration.x.toFixed(2);
-                let y = acceleration.x.toFixed(2);
-                let z = acceleration.x.toFixed(2);
+                let x = Math.round(acceleration.x * 100);
+                let y = Math.round(acceleration.y * 100);
+                let z = Math.round(acceleration.z * 100);
                 
                 switch (screen.orientation.type) {
                     case "portrait-primary":
@@ -488,6 +488,7 @@ onload="boot(
     <div id="info"></div>
     <canvas id="img_canvas"></canvas>
 </body>
+
 
 
 
