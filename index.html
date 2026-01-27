@@ -287,32 +287,23 @@
 
                     document.body.addEventListener(
                         "click",
-                        (e) => {
+                        ({clientX}) => {
+                            let half = 
+                                document.documentElement.clientWidth / 2;
+                            if(clientX < half){
+                                alert("left");
+                            }else if(clientY > half){
+                                alert("right");
+                            }else{
+                                alert("mid");
+                            }
+                            /*
                             rAF.capture_left(c);
                             window.addEventListener(
                                 'devicemotion',
-                                (e)=>{
-                                    let t = e.acceleration;
-                                    let x = t.x.toFixed(2);
-                                    let y = t.y.toFixed(2);
-                                    let z = t.z.toFixed(2);
-                                    info.innerText =`(${x}, ${y}, ${z})`;
-                                },
+                                //,
                                 { once:true }
-                            );
-                        }
-                    );
-
-                    document.addEventListener(
-                        'visibilitychange',
-                        () => {
-                             if (
-                                 document.visibilityState === 'visible'
-                             ){
-                                 keep_wake().catch((e)=>alert(e));
-                             }else{
-                                 //PASS
-                             }
+                            );*/
                         }
                     );
                     screen.orientation.addEventListener(
@@ -406,9 +397,9 @@
             );
         }
         function fmotion(fleft,fright,fdefault) {
-            let AB_sup = 20; //N (Natural numbers)
-            let p_inf = 30; //N
-            let p_sup = 80; //N
+            let AB_sup = 15; //N (Natural numbers)
+            let p_inf = 20; //N
+            let p_sup = 100; //N
             let fcond = (p, A, B, Fpositive, Fnegative, Fdefault) => {
                 let P = Math.abs(p);
                 A = Math.abs(A);
@@ -488,6 +479,7 @@ onload="boot(
     <div id="info"></div>
     <canvas id="img_canvas"></canvas>
 </body>
+
 
 
 
