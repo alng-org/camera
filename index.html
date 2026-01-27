@@ -270,9 +270,9 @@
                             if(clientX < half){
                                 rAF.capture_left(c);
                                 devicemotion_then(
-                                    cancel,
+                                    finish,//cancel,
                                     finish,
-                                    cancel,
+                                    finish,//cancel,
                                     error
                                 );
                                 
@@ -478,6 +478,3 @@ onload="boot(
     <div id="info"></div>
     <canvas id="img_canvas"></canvas>
 </body>
-
-
-
