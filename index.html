@@ -215,10 +215,9 @@
             }
             
             static #saved(ref,canvas){
-                return canvas.convertToBlob(
-                    { type: "image/png" }
-                ).then(
-                    (blob) => rAF.#write_file(ref,blob)
+                return canvas.toBlob(
+                    (blob) => rAF.#write_file(ref,blob),
+                    "image/png"
                 );
             }
             static #write_file(ref,blob){
@@ -430,21 +429,31 @@
                         return Fpositive();
                     }else if(p < 0){
                         return Fnegative();
-                    }else if(p === 0){
-                        return Fzero();
                     }else{
-                        return Fdefault();
+                        return Fzero();
                     }
-                }else{
+                }else if(
+                    Number.isNaN(P) ||
+                    Number.isNaN(A) ||
+                    Number.isNaN(B)
+                ){
                     return Fdefault();
+                }else{
+                    return Fzero(); //Generalized zero
                 }
             };
             window.addEventListener(
                 'devicemotion',
                 ({acceleration}) => {
-                    let x = Math.round(acceleration.x * 100);
-                    let y = Math.round(acceleration.y * 100);
-                    let z = Math.round(acceleration.z * 100);
+                    let x = Math.round(
+                        (acceleration.x ?? Number.NaN) * 100
+                    );
+                    let y = Math.round(
+                        (acceleration.y ?? Number.NaN) * 100
+                    );
+                    let z = Math.round(
+                        (acceleration.z ?? Number.NaN) * 100
+                    );
                     
                     switch (screen.orientation.type) {
                         case "portrait-primary":
