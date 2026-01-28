@@ -57,6 +57,7 @@ class webgl2{
                         WebGL2_context.ONE
                     );
                     break;
+                    
                 case webgl2.add:
                     WebGL2_context.blendEquation(WebGL2_context.FUNC_ADD);
                     WebGL2_context.blendFunc(
@@ -64,7 +65,7 @@ class webgl2{
                         WebGL2_context.ONE
                     );
                     break;
-
+                    
                 default:
                     webgl2.#report(`blend mode ${blend_mode} is not defined`,report_on_console);
                     return null;
@@ -526,4 +527,5 @@ class direct extends webgl2{
 
 
 }
+
 
