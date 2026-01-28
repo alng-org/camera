@@ -235,9 +235,9 @@ void main(){
                     WebGL2_context.texImage2D(
                         WebGL2_context.TEXTURE_2D,
                         0,
-                        WebGL2_context.RGBA32F,
+                        WebGL2_context.RGBA16F,
                         WebGL2_context.RGBA,
-                        WebGL2_context.FLOAT,
+                        WebGL2_context.HALF_FLOAT,
                         image_bit_map
                     );
                     WebGL2_context.uniformMatrix4fv(mat_ref,false,color_mat);
@@ -264,8 +264,7 @@ void main(){
             offscreen_canvas = null;
             return null;
         };
-        let color_32F = gl.getExtension('EXT_color_buffer_float');
-        if(gl === null || color_32F === null){
+        if(gl === null){
             webgl2.#report("WebGL2 with RGBA32F is not support",report_on_console);
             return finally_delete();
         }else{
@@ -529,6 +528,7 @@ class direct extends webgl2{
 
 
 }
+
 
 
 
