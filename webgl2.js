@@ -144,6 +144,7 @@ void main(){
         return `\
 #version 300 es
 precision highp float;
+precision highp int;
 uniform sampler2D ${tex_img};
 uniform mat4 ${color_mat};
 out vec4 color_result;
@@ -234,9 +235,9 @@ void main(){
                     WebGL2_context.texImage2D(
                         WebGL2_context.TEXTURE_2D,
                         0,
+                        WebGL2_context.RGBA32F,
                         WebGL2_context.RGBA,
-                        WebGL2_context.RGBA,
-                        WebGL2_context.UNSIGNED_BYTE,
+                        WebGL2_context.FLOAT,
                         image_bit_map
                     );
                     WebGL2_context.uniformMatrix4fv(mat_ref,false,color_mat);
@@ -263,8 +264,9 @@ void main(){
             offscreen_canvas = null;
             return null;
         };
-        if(gl === null){
-            webgl2.#report("WebGL2 is not support",report_on_console);
+        let color_32F = gl.getExtension('EXT_color_buffer_float');
+        if(gl === null || color_32F === null){
+            webgl2.#report("WebGL2 with RGBA32F is not support",report_on_console);
             return finally_delete();
         }else{
             let vs_src = webgl2.#universal_vertex_shader_src();
@@ -527,6 +529,7 @@ class direct extends webgl2{
 
 
 }
+
 
 
 
