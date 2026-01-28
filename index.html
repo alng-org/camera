@@ -255,9 +255,9 @@
                             if(clientX < half){
                                 rAF.capture_left(c);
                                 devicemotion_then(
-                                    finish,//cancel,
+                                    cancel,
                                     finish,
-                                    finish,//cancel,
+                                    cancel,
                                     error
                                 );
                                 
@@ -365,9 +365,9 @@
             );
         }
         function devicemotion_then(fleft,fright,fzero,fdefault) {
-            let AB_sup = 15; //N (Natural numbers)
+            let AB_sup = 20; //N (Natural numbers)
             let p_inf = 20; //N
-            let p_sup = 100; //N
+            let p_sup = 120; //N
             let fcond = (p, A, B, Fpositive, Fnegative, Fzero, Fdefault) => {
                 let P = Math.abs(p);
                 A = Math.abs(A);
@@ -463,5 +463,6 @@ onload="boot(
     <div id="info"></div>
     <canvas id="img_canvas"></canvas>
 </body>
+
 
 
