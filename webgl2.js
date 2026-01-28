@@ -40,6 +40,7 @@ class webgl2{
 
     static direct_draw = Symbol("normal");
     static screen = Symbol("screen");
+    static add = Symbol("add");
 
     static #draw(WebGL2_context,report_on_console,blend_mode){
         if(blend_mode === webgl2.direct_draw){
@@ -53,6 +54,13 @@ class webgl2{
                     WebGL2_context.blendEquation(WebGL2_context.FUNC_ADD);
                     WebGL2_context.blendFunc(
                         WebGL2_context.ONE_MINUS_DST_COLOR,
+                        WebGL2_context.ONE
+                    );
+                    break;
+                case webgl2.add:
+                    WebGL2_context.blendEquation(WebGL2_context.FUNC_ADD);
+                    WebGL2_context.blendFunc(
+                        WebGL2_context.ONE,
                         WebGL2_context.ONE
                     );
                     break;
@@ -518,3 +526,4 @@ class direct extends webgl2{
 
 
 }
+
