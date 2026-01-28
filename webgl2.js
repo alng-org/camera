@@ -463,20 +463,20 @@ class dubois extends webgl2{
 
     static #left_mat(inv_alpha){
         return webgl2.color_mat(
-                    webgl2.new_color(0.456,0.5,0.176,0),
-                    webgl2.new_color(0,0,0,0),
-                    webgl2.new_color(0,0,0,0),
-                    webgl2.new_color(0,0,0,1 / inv_alpha)
-                );
+            webgl2.new_color(0.4561000, 0.5004840, 0.1763810, 0.0),
+            webgl2.new_color(-0.0400822, -0.0378246, -0.0157589, 0.0),
+            webgl2.new_color(-0.0152161, -0.0205971, -0.00546856, 0.0),
+            webgl2.new_color(0.0, 0.0, 0.0, 1.0 / inv_alpha)
+        );
     }
     
     static #right_mat(inv_alpha){
-        return  webgl2.color_mat(
-                    webgl2.new_color(-0.043,-0.088,-0.002,0),
-                    webgl2.new_color(0.378,0.734,-0.018,0),
-                    webgl2.new_color(-0.072,0.212,1.131,0),
-                    webgl2.new_color(0,0,0,1 / inv_alpha)
-                );
+        return webgl2.color_mat(
+            webgl2.new_color(-0.0434062, -0.0879330, -0.0015552, 0.0),
+            webgl2.new_color(0.3784760, 0.7336400, -0.0184503, 0.0),
+            webgl2.new_color(-0.0721527, -0.2125920, 1.1331900, 0.0),
+            webgl2.new_color(0.0, 0.0, 0.0, 1.0 / inv_alpha)
+        );
     }
 
     static anaglyph(width,height){
@@ -527,6 +527,7 @@ class direct extends webgl2{
 
 
 }
+
 
 
 
