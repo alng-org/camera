@@ -254,12 +254,12 @@
                                 document.documentElement.clientWidth / 2;
                             if(clientX < half){
                                 rAF.capture_left(c);
-                                devicemotion_then(
+                                /*devicemotion_then(
                                     cancel,
                                     finish,
                                     cancel,
                                     error
-                                );
+                                );*/
                                 
                             }else if(clientX > half){
                                 rAF.capture_right(c);
@@ -463,6 +463,3 @@ onload="boot(
     <div id="info"></div>
     <canvas id="img_canvas"></canvas>
 </body>
-
-
-
