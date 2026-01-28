@@ -490,8 +490,8 @@ class dubois extends webgl2{
                             dubois.#left_mat(1)
                         ).draw(
                             right_image,
-                            dubois.#right_mat(2),
-                            webgl2.screen,
+                            dubois.#right_mat(1/*2*/),
+                            webgl2.add/*.screen*/,
                             target_canvas
                         ),
                 draw_right_first:
@@ -527,5 +527,6 @@ class direct extends webgl2{
 
 
 }
+
 
 
