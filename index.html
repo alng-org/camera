@@ -74,8 +74,7 @@
                     ref.#tools.gFrame(
                         (right) => {
                             ref.#tools
-                               .preview_3d
-                               .draw_left_first(
+                               .preview_3d(
                                    left,
                                    right
                                );
@@ -91,8 +90,7 @@
                     ref.#tools.gFrame(
                         (left) => {
                             ref.#tools
-                               .preview_3d
-                               .draw_right_first(
+                               .preview_3d(
                                    left,
                                    right
                                );
@@ -328,20 +326,20 @@
                                 }]
                             }
                         ).then(
-                            () => {
+                            () => gpu.of(canvas,cwidth,cheight)
+                        ).then(
+                            (render) => {
                                 let imgc = new ImageCapture(track_full);
-                                let draw_2d = direct.draw(cwidth,cheight);
-                                let draw_3d = dubois.anaglyph(cwidth,cheight);
+                                let draw_2d = direct.draw(render);
+                                let draw_3d = dubois.anaglyph(render);
                                 return {
                                     gFrame: (f)  => imgc.grabFrame().then(f).catch(
                                         (err) => {
                                             alert(`Cannot Capture an Image from the Camera, due to:\n${err}`);
                                         }
                                     ),
-                                    preview_2d: 
-                                        (img) => draw_2d(canvas,img),
-                                    preview_3d: 
-                                        draw_3d(canvas)
+                                    preview_2d: draw_2d,
+                                    preview_3d: draw_3d
                                 };
                             }
                         );
@@ -425,7 +423,7 @@
         }
         
     </script>
-    <script src="webgl2.js"></script>
+    <script src="gpu.js"></script>
     <style>
         canvas,#info{
             position: fixed;
@@ -463,4 +461,5 @@ onload="boot(
     <div id="info"></div>
     <canvas id="img_canvas"></canvas>
 </body>
+
 
