@@ -56,6 +56,7 @@
                 this.#finfo = (left,right) => 
                     update_info(info,left,right);
                 this.#finfo(INFO.CAPTURING,INFO.CAPTURING);
+                rAF.#render(this);
             }
 
             #replace(img){
@@ -114,7 +115,7 @@
                     () => ref.#handle(ref)
                 );
             }
-            static render(ref){
+            static #render(ref){
                 ref.#handle(ref);
             }
 
@@ -184,7 +185,7 @@
                                 ref.#handle = rAF.#original;
                                 ref.#finfo(INFO.CAPTURING,INFO.CAPTURING);
                                 ref.#capture = rAF.#no_capture;
-                                rAF.render(ref);
+                                rAF.#render(ref);
                             },
                             "image/png"
                         );
@@ -244,8 +245,6 @@
         ).then(
                 (tools) => {
                     let c = new rAF(tools,info);
-                    rAF.render(c);
-
                     let cancel = () => rAF.capture_cancel(c);
                     let finish = () => rAF.capture_other(c,canvas);
                     let capture_left = () => rAF.capture_left(c);
@@ -430,4 +429,5 @@ onload="boot(
     <div id="info"></div>
     <canvas id="img_canvas"></canvas>
 </body>
+
 
