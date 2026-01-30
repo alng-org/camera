@@ -3,7 +3,7 @@
  */
 class gpu{
 
-    static #format = "rgba32float";
+    static #format = "rgba16float";
 
     static #ushader(device){
         let src_code =`\
@@ -330,3 +330,4 @@ class direct{
     }
 
 }
+
