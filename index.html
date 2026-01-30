@@ -47,11 +47,15 @@
         class rAF{
             #img = null;
             #tools;
+            #finfo
             #handle = rAF.#original;
             #capture = rAF.#no_capture;
             
-            constructor(tools){
+            constructor(tools,info){
                 this.#tools = tools;
+                this.#finfo = (left,right) => 
+                    update_info(info,left,right);
+                this.#finfo(INFO.CAPTURING,INFO.CAPTURING);
             }
 
             #replace(img){
@@ -131,6 +135,7 @@
                                 rAF.#draw_left_first(
                                     ref.#img
                                 );
+                            ref.#finfo(INFO.CAPTURED,INFO.CAPTURING);
                         }
                         ref.#capture = rAF.#no_capture;
                     };
@@ -150,6 +155,7 @@
                                 rAF.#draw_right_first(
                                     ref.#img
                                 );
+                            ref.#finfo(INFO.CAPTURING,INFO.CAPTURED);
                         }
                         ref.#capture = rAF.#no_capture;
                     };
@@ -167,6 +173,7 @@
                         ref.#replace(null);
                         img?.close();
                         ref.#handle = rAF.#snooze;
+                        ref.#finfo(INFO.CAPTURED,INFO.CAPTURED);
                         canvas.toBlob(
                             (blob) => {
                                 if(blob !== null){
@@ -175,6 +182,7 @@
                                     alert("PNG Export Error");
                                 }
                                 ref.#handle = rAF.#original;
+                                ref.#finfo(INFO.CAPTURING,INFO.CAPTURING);
                                 ref.#capture = rAF.#no_capture;
                                 rAF.render(ref);
                             },
@@ -192,6 +200,7 @@
                         ref.#replace(null);
                         img?.close();
                         ref.#handle = rAF.#original;
+                        ref.#finfo(INFO.CAPTURING,INFO.CAPTURING);
                         ref.#capture = rAF.#no_capture;
                     };
                 }
@@ -234,7 +243,7 @@
                 (stream) => maxsize_stream(stream,canvas)
         ).then(
                 (tools) => {
-                    let c = new rAF(tools);
+                    let c = new rAF(tools,info);
                     rAF.render(c);
 
                     let cancel = () => rAF.capture_cancel(c);
@@ -421,3 +430,4 @@ onload="boot(
     <div id="info"></div>
     <canvas id="img_canvas"></canvas>
 </body>
+
