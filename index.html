@@ -238,40 +238,17 @@
                     rAF.render(c);
 
                     let cancel = () => rAF.capture_cancel(c);
-                    let error = () => {
-                        alert(
-                            "Capture Failed: No Motion/Orientation Data"
-                        ); //todo
-                        cancel();
-                    };
                     let finish = () => rAF.capture_other(c,canvas);
-                    document.body.addEventListener(
-                        "click",
-                        ({clientX}) => {
-                            let half = 
-                                document.documentElement.clientWidth / 2;
-                            if(clientX < half){
-                                rAF.capture_left(c);
-                                /*devicemotion_then(
-                                    cancel,
-                                    finish,
-                                    cancel,
-                                    error
-                                );*/
-                                
-                            }else if(clientX > half){
-                                rAF.capture_right(c);
-                                /*devicemotion_then(
-                                    finish,
-                                    cancel,
-                                    cancel,
-                                    error
-                                );*/
-                            }else{
-                                //PASS
-                            }
-                        }
+                    let capture_left = () => rAF.capture_left(c);
+                    let capture_right = () => rAF.capture_right(c);
+                    
+                    click_main(
+                        capture_left,
+                        capture_right,
+                        finish,
+                        cancel
                     );
+                    
                     screen.orientation.addEventListener(
                         'change',
                         cancel
@@ -362,64 +339,47 @@
                 }
             );
         }
-        function devicemotion_then(fleft,fright,fzero,fdefault) {
-            let AB_sup = 20; //N (Natural numbers)
-            let p_inf = 20; //N
-            let p_sup = 120; //N
-            let fcond = (p, A, B, Fpositive, Fnegative, Fzero, Fdefault) => {
-                let P = Math.abs(p);
-                A = Math.abs(A);
-                B = Math.abs(B);
-                if(
-                    (p_inf < P && P < p_sup) &&
-                    (A < AB_sup) &&
-                    (B < AB_sup)
-                ){
-                    if(p > 0){
-                        return Fpositive();
-                    }else if(p < 0){
-                        return Fnegative();
+        function click_main(capture_left,capture_right,finish,cancel){
+            let click_once = (f) =>
+                document.body.addEventListener(
+                    "click",
+                    f,
+                    {once: true}
+                );
+            let abstract_click = (left,right,left_after,right_after) =>
+                ({clientX}) => {
+                    let half = document.documentElement.clientWidth / 2;
+                    if(clientX < half){
+                        left();
+                        click_once(left_after());
+                    }else if(clientX > half){
+                        right();
+                        click_once(right_after());
                     }else{
-                        return Fzero();
+                        //PASS
                     }
-                }else if(
-                    Number.isNaN(P) ||
-                    Number.isNaN(A) ||
-                    Number.isNaN(B)
-                ){
-                    return Fdefault();
-                }else{
-                    return Fzero(); //Generalized zero
-                }
+                };
+            let click_event = {
+                original: abstract_click(
+                    capture_left,
+                    capture_right,
+                    () => click_event.left,
+                    () => click_event.right
+                ),
+                left: abstract_click(
+                    cancel,
+                    finish,
+                    () => click_event.original,
+                    () => click_event.original
+                ),
+                right: abstract_click(
+                    finish,
+                    cancel,
+                    () => click_event.original,
+                    () => click_event.original
+                )
             };
-            window.addEventListener(
-                'devicemotion',
-                ({acceleration}) => {
-                    let x = Math.round(
-                        (acceleration.x ?? Number.NaN) * 100
-                    );
-                    let y = Math.round(
-                        (acceleration.y ?? Number.NaN) * 100
-                    );
-                    let z = Math.round(
-                        (acceleration.z ?? Number.NaN) * 100
-                    );
-                    
-                    switch (screen.orientation.type) {
-                        case "portrait-primary":
-                            return fcond(x, y, z, fright, fleft, fzero, fdefault);
-                        case "portrait-secondary":
-                            return fcond(x, y, z, fleft, fright, fzero, fdefault);
-                        case "landscape-primary":
-                            return fcond(y, x, z, fleft, fright, fzero, fdefault);
-                        case "landscape-secondary":
-                            return fcond(y, x, z, fright, fleft, fzero, fdefault);
-                        default:
-                            return fdefault();
-                    }
-                },
-                { once:true }
-            );
+            click_once(click_event.original);
         }
         
     </script>
@@ -461,5 +421,3 @@ onload="boot(
     <div id="info"></div>
     <canvas id="img_canvas"></canvas>
 </body>
-
-
