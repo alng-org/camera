@@ -3,6 +3,8 @@
  */
 class gpu{
 
+    static #format = "rgba32float";
+
     static #ushader(device){
         let src_code =`\
 @vertex
@@ -58,7 +60,7 @@ fn reduce(a: vec4<f32>,b: vec4<f32>) -> vec4<f32> {
                     entryPoint: "fragment",
                     targets: [
                         {
-                            format: "rgba16float"
+                            format: gpu.#format
                         }
                     ]
                 }
@@ -92,7 +94,7 @@ fn reduce(a: vec4<f32>,b: vec4<f32>) -> vec4<f32> {
                     context.configure(
                         {
                             device: device,
-                            format: "rgba16float",
+                            format: gpu.#format,
                             colorSpace: "display-p3",
                             alphaMode: "opaque",
                             toneMapping: {
@@ -136,7 +138,7 @@ fn reduce(a: vec4<f32>,b: vec4<f32>) -> vec4<f32> {
                             device.queue.submit(
                                 [ mapper.finish() ]
                             );
-                            
+
                         }
                     };
                 }
@@ -149,7 +151,7 @@ fn reduce(a: vec4<f32>,b: vec4<f32>) -> vec4<f32> {
             let tex_a = device.createTexture(
                 {
                     size: [width,height,1],
-                    format: "rgba16float",
+                    format: gpu.#format,
                     usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST | GPUTextureUsage.RENDER_ATTACHMENT
                 }
             );
@@ -162,7 +164,7 @@ fn reduce(a: vec4<f32>,b: vec4<f32>) -> vec4<f32> {
             let tex_b = device.createTexture(
                 {
                     size: [width,height,1],
-                    format: "rgba16float",
+                    format: gpu.#format,
                     usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST | GPUTextureUsage.RENDER_ATTACHMENT
                 }
             );
