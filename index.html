@@ -406,13 +406,20 @@
             }
         }
 
-        let lock;
         function keep_wake(){
             return document.body.requestFullscreen().then(
                 () => navigator.wakeLock.request('screen')
             ).then(
                 (wake_lock) => {
-                    lovk = wake_lock;
+                    wake_lock.addEventListener(
+                        "release",
+                        () => document.body.addEventListener(
+                            "click",
+                            (e) => keep_wake(),
+                            {once: true}
+                        ),
+                        {once: true}
+                    );
                 }
             );
         }
@@ -456,6 +463,7 @@ onload="boot(
     <div id="info"></div>
     <canvas id="img_canvas"></canvas>
 </body>
+
 
 
 
