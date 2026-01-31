@@ -528,9 +528,3 @@ class direct extends webgl2{
 
 
 }
-
-
-
-
-
-
