@@ -47,21 +47,57 @@
         class rAF{
             #img = null;
             #tools;
-            #finfo
-            #handle = rAF.#original;
-            #capture = rAF.#no_capture;
+            #finfo;
+            #handle;
+            #fclick;
+            #capture;
+            #canvas;
             
-            constructor(tools,info){
+            constructor(tools,info,canvas){
                 this.#tools = tools;
                 this.#finfo = (left,right) => 
                     update_info(info,left,right);
-                this.#finfo(INFO.CAPTURING,INFO.CAPTURING);
+                this.#canvas = canvas;
+                
+                this.#update(
+                    INFO.CAPTURING,
+                    INFO.CAPTURING,
+                    rAF.#original,
+                    rAF.#abstract_fclick(
+                        this,
+                        rAF.#capture_left,
+                        rAF.#capture_right
+                    )
+                );
+                
+                this.#capture = rAF.#no_capture;
                 rAF.#render(this);
+                
+                document.body.addEventListener(
+                    "click",
+                    (e) => this.#fclick(e)
+                );  
+                screen.orientation.addEventListener(
+                    "change",
+                    (e) => rAF.#capture_cancel(this)
+                );
+                
             }
 
             #replace(img){
                 this.#img?.close();
                 this.#img = img;
+            }
+
+            #update(
+                left,
+                right,
+                handle,
+                fclick
+            ){
+                this.#handle = handle;
+                this.#fclick = fclick;
+                this.#finfo(left,right);
             }
             
             static #original(ref){
@@ -109,6 +145,19 @@
             static #snooze(ref){
                 //PASS
             }
+
+            static #abstract_fclick(ref,left,right){
+                return ({clientX}) => {
+                    let half = document.documentElement.clientWidth / 2;
+                    if(clientX < half){
+                        left(ref);
+                    }else if(clientX > half){
+                        right(ref);
+                    }else{
+                        //PASS
+                    }
+                };
+            }
             
             static #next_render(ref){
                 requestAnimationFrame(
@@ -123,7 +172,7 @@
                 img?.close();
             }
             
-            static capture_left(ref){
+            static #capture_left(ref){
                 if(ref.#capture !== rAF.#no_capture){
                     //PASS
                 }else{
@@ -132,18 +181,25 @@
                             //PASS
                         }else{
                             ref.#replace(img);
-                            ref.#handle = 
+                            ref.#update(
+                                INFO.CAPTURED,
+                                INFO.CAPTURING,
                                 rAF.#draw_left_first(
                                     ref.#img
-                                );
-                            ref.#finfo(INFO.CAPTURED,INFO.CAPTURING);
+                                ),
+                                rAF.#abstract_fclick(
+                                    ref,
+                                    rAF.#capture_cancel,
+                                    rAF.#capture_other
+                                )
+                            );
                         }
                         ref.#capture = rAF.#no_capture;
                     };
                 }
             }
 
-            static capture_right(ref){
+            static #capture_right(ref){
                 if(ref.#capture !== rAF.#no_capture){
                     //PASS
                 }else{
@@ -152,38 +208,58 @@
                             //PASS
                         }else{
                             ref.#replace(img);
-                            ref.#handle = 
+                            ref.#update(
+                                INFO.CAPTURING,
+                                INFO.CAPTURED,
                                 rAF.#draw_right_first(
                                     ref.#img
-                                );
-                            ref.#finfo(INFO.CAPTURING,INFO.CAPTURED);
+                                ),
+                                rAF.#abstract_fclick(
+                                    ref,
+                                    rAF.#capture_other,
+                                    rAF.#capture_cancel
+                                )
+                            );
                         }
                         ref.#capture = rAF.#no_capture;
                     };
                 }
             }
 
-            static capture_other(ref,canvas){
+            static #capture_other(ref){
                 if(
-                    ref.#capture !== rAF.#no_capture &&
-                    ref.#img !== null
+                    ref.#capture !== rAF.#no_capture ||
+                    ref.#img === null
                 ){
                     //PASS
                 }else{
                     ref.#capture = (ref,img = null) => {
                         ref.#replace(null);
                         img?.close();
-                        ref.#handle = rAF.#snooze;
-                        ref.#finfo(INFO.CAPTURED,INFO.CAPTURED);
-                        canvas.toBlob(
+                        ref.#update(
+                            INFO.CAPTURED,
+                            INFO.CAPTURED,
+                            rAF.#snooze,
+                            (e) =>{ /*PASS*/ }
+                        );
+                        ref.#canvas.toBlob(
                             (blob) => {
                                 if(blob !== null){
                                     rAF.#download_file(blob);
                                 }else{
                                     alert("PNG Export Error");
                                 }
-                                ref.#handle = rAF.#original;
-                                ref.#finfo(INFO.CAPTURING,INFO.CAPTURING);
+                                ref.#update(
+                                    INFO.CAPTURING,
+                                    INFO.CAPTURING,
+                                    rAF.#original,
+                                    rAF.#abstract_fclick(
+                                        ref,
+                                        rAF.#capture_left,
+                                        rAF.#capture_right
+                                    )
+                                );
+                                
                                 ref.#capture = rAF.#no_capture;
                                 rAF.#render(ref);
                             },
@@ -193,15 +269,24 @@
                 }
             }
 
-            static capture_cancel(ref){
+            static #capture_cancel(ref){
                 if(ref.#capture !== rAF.#no_capture){
                     //PASS
                 }else{
                     ref.#capture = (ref,img = null) => {
                         ref.#replace(null);
                         img?.close();
-                        ref.#handle = rAF.#original;
-                        ref.#finfo(INFO.CAPTURING,INFO.CAPTURING);
+                        ref.#update(
+                            INFO.CAPTURING,
+                            INFO.CAPTURING,
+                            rAF.#original,
+                            rAF.#abstract_fclick(
+                                ref,
+                                rAF.#capture_left,
+                                rAF.#capture_right
+                            )
+                        );
+                        
                         ref.#capture = rAF.#no_capture;
                     };
                 }
@@ -244,23 +329,7 @@
                 (stream) => maxsize_stream(stream,canvas)
         ).then(
                 (tools) => {
-                    let c = new rAF(tools,info);
-                    let cancel = () => rAF.capture_cancel(c);
-                    let finish = () => rAF.capture_other(c,canvas);
-                    let capture_left = () => rAF.capture_left(c);
-                    let capture_right = () => rAF.capture_right(c);
-                    
-                    click_main(
-                        capture_left,
-                        capture_right,
-                        finish,
-                        cancel
-                    );
-                    
-                    screen.orientation.addEventListener(
-                        'change',
-                        cancel
-                    );
+                    let c = new rAF(tools,info,canvas);
                 }
         ).catch(
                 (err) => {
@@ -347,48 +416,6 @@
                 }
             );
         }
-        function click_main(capture_left,capture_right,finish,cancel){
-            let click_once = (f) =>
-                document.body.addEventListener(
-                    "click",
-                    f,
-                    {once: true}
-                );
-            let abstract_click = (left,right,left_after,right_after) =>
-                ({clientX}) => {
-                    let half = document.documentElement.clientWidth / 2;
-                    if(clientX < half){
-                        left();
-                        click_once(left_after());
-                    }else if(clientX > half){
-                        right();
-                        click_once(right_after());
-                    }else{
-                        //PASS
-                    }
-                };
-            let click_event = {
-                original: abstract_click(
-                    capture_left,
-                    capture_right,
-                    () => click_event.left,
-                    () => click_event.right
-                ),
-                left: abstract_click(
-                    cancel,
-                    finish,
-                    () => click_event.original,
-                    () => click_event.original
-                ),
-                right: abstract_click(
-                    finish,
-                    cancel,
-                    () => click_event.original,
-                    () => click_event.original
-                )
-            };
-            click_once(click_event.original);
-        }
         
     </script>
     <script src="gpu.js"></script>
@@ -429,5 +456,6 @@ onload="boot(
     <div id="info"></div>
     <canvas id="img_canvas"></canvas>
 </body>
+
 
 
