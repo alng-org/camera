@@ -8,27 +8,6 @@
     maximum-scale=1.0
     user-scalable=no">
     <script>
-        
-        function boot(canvas,info){
-            if(
-                navigator.language === `zh-CN`
-            ){
-                //简体中文
-                info.innerText = `开发中...`;
-            }else{
-                //Global
-                info.innerText =`Devloping...`;
-            }
-            document.body.addEventListener(
-                "click",
-                (e) => {
-                    init(canvas,info);
-                },
-                {
-                    once: true
-                }
-            );
-        }
 
         let INFO = Object.freeze(
             {
@@ -41,8 +20,6 @@
         function update_info(info,left,right){
             info.innerText = `${left('>')} _ ${right('<')}`;
         }
-
-
 
         class rAF{
             #img = null;
@@ -305,31 +282,38 @@
             
         }
 
-        function init(canvas,info){ 
-            keep_wake().then(
-            () => {
-                return navigator.mediaDevices.getUserMedia(
-                    {
-                        audio:false,
-                        video:{
-                            width:{
-                                ideal:3840
-                            },
-                            height:{
-                               ideal:2160
-                            },
-                            facingMode:{
-                                exact:"environment"
-                            }
-                        }
-                     }
-                 );
-            }
-        ).then(
+        function init(canvas,info){
+            navigator.mediaDevices.getUserMedia(
+                {
+                    audio:false,
+                    video:{
+                        width:{ ideal:3840 },
+                        height:{ ideal:2160 },
+                        facingMode:{ ideal:"environment" }
+                    }
+                }
+            ).then(
                 (stream) => maxsize_stream(stream,canvas)
         ).then(
                 (tools) => {
                     let c = new rAF(tools,info,canvas);
+                    
+                    screen.orientation.addEventListener(
+                        "change",
+                        (e) => keep_wake()
+                    );
+                    
+                    document.body.addEventListener(
+                        "visibilitychange",
+                        (e) => {
+                            if(document.visibilityState === "visible"){
+                                keep_wake();
+                            }else{
+                                //PASS
+                            }
+                        }
+                    );
+                    
                 }
         ).catch(
                 (err) => {
@@ -407,21 +391,22 @@
         }
 
         function keep_wake(){
-            return document.body.requestFullscreen().then(
-                () => navigator.wakeLock.request('screen')
-            ).then(
-                (wake_lock) => {
-                    wake_lock.addEventListener(
+            let type = screen.orientation?.type ?? "";
+            if( type.startsWith("landscape") === true ){
+                document.body.requestFullscreen();
+            }else{
+                document.exitFullscreen();
+            }
+            navigator.wakeLock
+                .request('screen')
+                .then(
+                    (wake_lock) => wake_lock.addEventListener(
                         "release",
-                        () => document.body.addEventListener(
-                            "click",
-                            (e) => keep_wake(),
-                            {once: true}
-                        ),
-                        {once: true}
-                    );
-                }
-            );
+                        (e) => keep_wake(),
+                        { once: true }
+                    )
+                );
+        
         }
         
     </script>
@@ -456,14 +441,10 @@
     </style>
 </head>
 <body 
-onload="boot(
+onload="init(
     document.getElementById('img_canvas'),
     document.getElementById('info')
 )">
     <div id="info"></div>
     <canvas id="img_canvas"></canvas>
 </body>
-
-
-
-
