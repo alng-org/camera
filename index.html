@@ -289,7 +289,7 @@
                     video:{
                         width:{ ideal:3840 },
                         height:{ ideal:2160 },
-                        facingMode:{ ideal:"environment" }
+                        facingMode:{ exact:"environment" }
                     }
                 }
             ).then(
@@ -340,15 +340,9 @@
                     {
                         audio:false,
                         video:{
-                            width:{
-                                exact: cwidth
-                            },
-                            height:{
-                               exact: cheight
-                            },
-                            facingMode:{
-                                exact:"environment"
-                            }
+                            width:{ exact: cwidth },
+                            height:{ exact: cheight },
+                            facingMode:{ exact:"environment" }
                         }
                     }
                 ).then(
@@ -448,3 +442,4 @@ onload="init(
     <div id="info"></div>
     <canvas id="img_canvas"></canvas>
 </body>
+
