@@ -328,11 +328,10 @@
             let cap = track.getCapabilities();
             let cwidth = cap.width?.max;
             let cheight = cap.height?.max;
-            let czoom = cap.zoom?.min;
+            let czoom = 1.0;
             if(
                 cwidth !== undefined &&
-                cheight !== undefined &&
-                czoom !== undefined
+                cheight !== undefined
             ){
                 stream.getTracks().forEach(t => t.stop());
                 
@@ -442,4 +441,5 @@ onload="init(
     <div id="info"></div>
     <canvas id="img_canvas"></canvas>
 </body>
+
 
