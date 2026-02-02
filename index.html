@@ -418,13 +418,20 @@
             object-fit: contain;
         }
         #info{
-            z-index:2;
             pointer-events: none;
             color: white;
             opacity: 0.5;
+        }
+        #help{
+            position:fixed;
+            right: 90%;
+            bottom:90%;
+        }
+        #info,#help{
+            z-index:2;
             font-family: emoji;
             font-weight:bold;
-            font-size:5rem;
+            font-size:3rem;
         }
         body{
             background-color: black;
@@ -440,7 +447,5 @@ onload="init(
 )">
     <div id="info"></div>
     <canvas id="img_canvas"></canvas>
+    <div id="help" onclick="alert(1)">❔</div>
 </body>
-
-
-
