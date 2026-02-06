@@ -297,7 +297,8 @@
         ).then(
                 (tools) => {
                     let c = new rAF(tools,info,canvas);
-                    
+
+                    keep_wake();
                     screen.orientation.addEventListener(
                         "change",
                         (e) => keep_wake()
@@ -401,6 +402,10 @@
                 );
         
         }
+
+        function help(e){
+            event.stopPropagation();
+        }
         
     </script>
     <script src="gpu.js"></script>
@@ -449,6 +454,7 @@ onload="init(
     <canvas id="img_canvas"></canvas>
     <div id="help" onclick="alert(1)">❔</div>
 </body>
+
 
 
 
