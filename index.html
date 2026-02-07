@@ -20,6 +20,11 @@
         function update_info(info,left,right){
             info.innerText = `${left('>')} _ ${right('<')}`;
         }
+        function replace_info(info,new_info){
+            let ret = info.innerText;
+            info.innerText = new_info;
+            return ret;
+        }
 
         class rAF{
             #img = null;
@@ -318,6 +323,33 @@
                             }
                         }
                     );
+
+                    let fhelp = (start,end) => {
+                        help.addEventListener(
+                            start,
+                            (e) => {
+                                e.preventDefault();
+                                let old_info = replace_info(
+                                    info,
+`\
+click left first to capture left,
+then click right to capture right and save photo,
+or click left to cancel.
+click right first to capture right,
+then click left to capture left and save photo,
+or click right to cancel.`
+                                );
+                                help.addEventListener(
+                                    end,
+                                    (e) => replace_info(info,old_info),
+                                    { once:true }
+                                );
+                            }
+                        );
+                    };
+
+                    fhelp("mousedown","mouseup");
+                    fhelp("touchstart","touchend");
                     
                 }
         ).catch(
@@ -459,6 +491,7 @@ onload="init(
     <canvas id="img_canvas"></canvas>
     <div id="help">❔</div>
 </body>
+
 
 
 
