@@ -282,7 +282,7 @@
             
         }
 
-        function init(canvas,info){
+        function init(canvas,info,help){
             navigator.mediaDevices.getUserMedia(
                 {
                     audio:false,
@@ -298,7 +298,11 @@
                 (tools) => {
                     let c = new rAF(tools,info,canvas);
 
-                    keep_wake();
+                    document.body.addEventListener(
+                        "click",
+                        (e) => keep_wake()
+                    );
+                    
                     screen.orientation.addEventListener(
                         "change",
                         (e) => keep_wake()
@@ -448,12 +452,14 @@
 <body 
 onload="init(
     document.getElementById('img_canvas'),
-    document.getElementById('info')
+    document.getElementById('info'),
+    document.getElementById('help')
 )">
     <div id="info"></div>
     <canvas id="img_canvas"></canvas>
-    <div id="help" onclick="alert(1)">❔</div>
+    <div id="help">❔</div>
 </body>
+
 
 
 
