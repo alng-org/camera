@@ -345,3 +345,171 @@ fn reduce(a: vec4<f32>,b: vec4<f32>) -> vec4<f32> {
     }
 
 }
+
+/* impl by Claude, under user guide */
+class webgl2{
+
+    static #vertex_src = `#version 300 es
+void main(){
+    float x = (float(gl_VertexID) - 1.0) * 3.0;
+    float y = (gl_VertexID == 1) ? -3.0 : 1.0;
+    gl_Position = vec4(x, y, 0.0, 1.0);
+}`;
+
+    static #fragment_src = `#version 300 es
+precision highp float;
+
+uniform sampler2D tex_a;
+uniform mat4 mat_a;
+uniform sampler2D tex_b;
+uniform mat4 mat_b;
+
+out vec4 out_color;
+
+vec4 color(mat4 color_mat, sampler2D src_tex){
+    ivec2 coord = ivec2(gl_FragCoord.xy);
+    return color_mat * texelFetch(src_tex, coord, 0);
+}
+
+vec4 reduce(vec4 a, vec4 b){
+    return a + b;
+}
+
+void main(){
+    out_color = reduce(
+        color(mat_a, tex_a),
+        color(mat_b, tex_b)
+    );
+}`;
+
+    static #compile(gl,type,src){
+        let shader = gl.createShader(type);
+        gl.shaderSource(shader,src);
+        gl.compileShader(shader);
+        if(!gl.getShaderParameter(shader,gl.COMPILE_STATUS)){
+            console.error(gl.getShaderInfoLog(shader));
+        }
+        return shader;
+    }
+
+    static #program(gl){
+        let vertex = webgl2.#compile(gl,gl.VERTEX_SHADER,webgl2.#vertex_src);
+        let fragment = webgl2.#compile(gl,gl.FRAGMENT_SHADER,webgl2.#fragment_src);
+        let program = gl.createProgram();
+        gl.attachShader(program,vertex);
+        gl.attachShader(program,fragment);
+        gl.linkProgram(program);
+        if(!gl.getProgramParameter(program,gl.LINK_STATUS)){
+            console.error(gl.getProgramInfoLog(program));
+        }
+        return program;
+    }
+
+    static #texture(gl){
+        let tex = gl.createTexture();
+        gl.bindTexture(gl.TEXTURE_2D,tex);
+        gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.NEAREST);
+        gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.NEAREST);
+        gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);
+        return tex;
+    }
+
+    static #upload(gl,tex,image_bit_map){
+        gl.bindTexture(gl.TEXTURE_2D,tex);
+        gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL,true);
+        gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA8,gl.RGBA,gl.UNSIGNED_BYTE,image_bit_map);
+    }
+
+    static #configure_color_space(gl){
+        if("drawingBufferColorSpace" in gl){
+            try{
+                gl.drawingBufferColorSpace = "display-p3";
+            }catch(err){
+                //PASS
+            }
+        }
+    }
+
+    static #pipeline(gl,target_canvas,width,height){
+        webgl2.#configure_color_space(gl);
+
+        let program = webgl2.#program(gl);
+        let tex_a = webgl2.#texture(gl);
+        let tex_b = webgl2.#texture(gl);
+        let vao = gl.createVertexArray();
+
+        let loc_tex_a = gl.getUniformLocation(program,"tex_a");
+        let loc_mat_a = gl.getUniformLocation(program,"mat_a");
+        let loc_tex_b = gl.getUniformLocation(program,"tex_b");
+        let loc_mat_b = gl.getUniformLocation(program,"mat_b");
+
+        let same_size = (image_bit_map_a,image_bit_map_b) =>
+            [image_bit_map_a,image_bit_map_b].every(
+                (tex) =>
+                    tex instanceof ImageBitmap &&
+                    tex.width === image_bit_map_a.width &&
+                    tex.height === image_bit_map_a.height
+            );
+
+        /*[Interface]*/
+        return (
+            image_bit_map_a,
+            color_mat_a = gpu.color_id_mat,
+            image_bit_map_b = image_bit_map_a,
+            color_mat_b = gpu.color_zero_mat
+        ) => {
+            if(
+                !same_size(image_bit_map_a,image_bit_map_b) ||
+                ![color_mat_a,color_mat_b].every(
+                    (mat) => mat instanceof Float32Array && mat.length === 16
+                )
+            ){
+                console.error("gpu>> Cannot render, you might have two images of different sizes");
+                return;
+            }
+
+            target_canvas.width = image_bit_map_a.width;
+            target_canvas.height = image_bit_map_a.height;
+            gl.viewport(0,0,target_canvas.width,target_canvas.height);
+
+            webgl2.#upload(gl,tex_a,image_bit_map_a);
+            webgl2.#upload(gl,tex_b,image_bit_map_b);
+
+            gl.useProgram(program);
+            gl.bindVertexArray(vao);
+
+            gl.activeTexture(gl.TEXTURE0);
+            gl.bindTexture(gl.TEXTURE_2D,tex_a);
+            gl.uniform1i(loc_tex_a,0);
+            gl.uniformMatrix4fv(loc_mat_a,false,color_mat_a);
+
+            gl.activeTexture(gl.TEXTURE1);
+            gl.bindTexture(gl.TEXTURE_2D,tex_b);
+            gl.uniform1i(loc_tex_b,1);
+            gl.uniformMatrix4fv(loc_mat_b,false,color_mat_b);
+
+            gl.clearColor(0,0,0,1);
+            gl.clear(gl.COLOR_BUFFER_BIT);
+            gl.drawArrays(gl.TRIANGLES,0,3);
+        };
+    }
+
+    /*return Promise<[Interface]>*/
+    static of(target_canvas,width,height){
+        let gl = target_canvas.getContext(
+            "webgl2",
+            {
+                colorSpace: "display-p3",
+                alpha: false,
+                powerPreference: "high-performance",
+                preserveDrawingBuffer: true
+            }
+        );
+        if(gl === null){
+            return Promise.reject(new Error("webgl2 is not supported! "));
+        }
+        return Promise.resolve(webgl2.#pipeline(gl,target_canvas,width,height));
+    }
+
+}
