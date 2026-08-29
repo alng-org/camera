@@ -346,13 +346,15 @@ fn reduce(a: vec4<f32>,b: vec4<f32>) -> vec4<f32> {
 
 }
 
-/* impl by Claude, under user guide */
+/* impl by Claude, under user guide
+   fixed Y-Flip by me(user)
+*/
 class webgl2{
 
     static #vertex_src = `#version 300 es
 void main(){
     float x = (float(gl_VertexID) - 1.0) * 3.0;
-    float y = (gl_VertexID == 1) ? 3.0 : -1.0;
+    float y = (gl_VertexID == 1) ? -3.0 : 1.0;
     gl_Position = vec4(x, y, 0.0, 1.0);
 }`;
 
@@ -367,7 +369,17 @@ uniform mat4 mat_b;
 out vec4 out_color;
 
 vec4 color(mat4 color_mat, sampler2D src_tex){
-    ivec2 coord = ivec2(gl_FragCoord.xy);
+    ivec2 tex_size = textureSize(src_tex,0);
+    float Y = float(tex_size.y);
+    mat4 pos_mat = mat4(
+        1,      0,     0,  0,
+        0,     -1,     0,  0,
+        0,      0,     1,  0,
+        0,  Y-1.0,     0,  1
+    );
+    ivec2 coord = ivec2(
+         (pos_mat * gl_FragCoord).xy
+    );
     return color_mat * texelFetch(src_tex, coord, 0);
 }
 
