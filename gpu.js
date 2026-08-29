@@ -1,7 +1,98 @@
 /**
  * search [Interface] for more info
+ * webgpu: webgpu impl
+ * webgl2: webgl2 impl
  */
 class gpu{
+    /*return Promise<[Interface]>*/
+    static of(target_canvas,width,height){
+        //*
+    }
+
+
+    static color_zero_mat = gpu.color_mat(
+        gpu.new_color(0,0,0,0),
+        gpu.new_color(0,0,0,0),
+        gpu.new_color(0,0,0,0),
+        gpu.new_color(0,0,0,0)
+    );
+
+    static color_id_mat = gpu.color_mat(
+        gpu.new_color(1,0,0,0),
+        gpu.new_color(0,1,0,0),
+        gpu.new_color(0,0,1,0),
+        gpu.new_color(0,0,0,1)
+    );
+    
+    static new_color(red_percent,green_percent,blue_percent,alpha_percent){
+        return new Float32Array(
+            [
+                    red_percent,
+                    green_percent,
+                    blue_percent,
+                    alpha_percent
+               ]
+        );
+    }
+
+    static color_mat(new_red,new_green,new_blue,new_alpha){
+        if(
+            [new_red,new_green,new_blue,new_alpha].every(
+                (t) =>  
+                    typeof(t) === "object" && 
+                    t.constructor ===Float32Array.prototype.constructor &&
+                    t.length === 4
+            ) === true
+        ){
+            return new Float32Array(
+                [
+                    new_red[0],new_green[0],new_blue[0],new_alpha[0],
+                    new_red[1],new_green[1],new_blue[1],new_alpha[1],
+                    new_red[2],new_green[2],new_blue[2],new_alpha[2],
+                    new_red[3],new_green[3],new_blue[3],new_alpha[3]
+                ]
+            );
+        }else{
+            return null;
+        }
+    }
+}
+
+class dubois{
+
+    static #left_mat = gpu.color_mat(
+        gpu.new_color(0.4561000, 0.5004840, 0.1763810, 0.0),
+        gpu.new_color(-0.0400822, -0.0378246, -0.0157589, 0.0),
+        gpu.new_color(-0.0152161, -0.0205971, -0.00546856, 0.0),
+        gpu.new_color(0.0, 0.0, 0.0, 1.0)
+    );
+    
+    static #right_mat = gpu.color_mat(
+        gpu.new_color(-0.0434062, -0.0879330, -0.0015552, 0.0),
+        gpu.new_color(0.3784760, 0.7336400, -0.0184503, 0.0),
+        gpu.new_color(-0.0721527, -0.2125920, 1.1331900, 0.0),
+        gpu.new_color(0.0, 0.0, 0.0, 1.0)
+    );
+
+    /* required [Interface] */
+    static anaglyph(gpu_interface){
+        return (left,right) => gpu_interface(left,dubois.#left_mat,right,dubois.#right_mat);
+    }
+
+}
+
+
+class direct{
+
+    /* required [Interface] */
+    static draw(gpu_interface){
+        return (image) => gpu_interface(image);
+    }
+
+}
+
+/* impl by me, under Gemini guide */
+class webgpu{
 
     static #format = "rgba16float";
 
@@ -47,7 +138,7 @@ fn reduce(a: vec4<f32>,b: vec4<f32>) -> vec4<f32> {
     }
 
     static #pipeline(device,target_canvas,width,height){
-        let shader = gpu.#ushader(device);
+        let shader = webgpu.#ushader(device);
         return device.createRenderPipelineAsync(
             {
                 layout: "auto",
@@ -60,7 +151,7 @@ fn reduce(a: vec4<f32>,b: vec4<f32>) -> vec4<f32> {
                     entryPoint: "fragment",
                     targets: [
                         {
-                            format: gpu.#format
+                            format: webgpu.#format
                         }
                     ]
                 }
@@ -68,8 +159,8 @@ fn reduce(a: vec4<f32>,b: vec4<f32>) -> vec4<f32> {
         ).then(
             (pipeline) => {
                 let type = pipeline.getBindGroupLayout(0);
-                let group_0 = gpu.#bind_group( device, type,width, height );
-                let group_1 = gpu.#bind_group( device, type,height, width );
+                let group_0 = webgpu.#bind_group( device, type,width, height );
+                let group_1 = webgpu.#bind_group( device, type,height, width );
                 let group = (
                     image_bit_map_a,
                     color_mat_a,
@@ -94,7 +185,7 @@ fn reduce(a: vec4<f32>,b: vec4<f32>) -> vec4<f32> {
                     context.configure(
                         {
                             device: device,
-                            format: gpu.#format,
+                            format: webgpu.#format,
                             colorSpace: "display-p3",
                             alphaMode: "opaque",
                             toneMapping: {
@@ -246,88 +337,8 @@ fn reduce(a: vec4<f32>,b: vec4<f32>) -> vec4<f32> {
                         .then(
                             (adapter) => adapter.requestDevice()
                         ).then(
-                            (device) => gpu.#pipeline( device, target_canvas, width, height)
+                            (device) => webgpu.#pipeline( device, target_canvas, width, height)
                         );
     }
 
-
-    static color_zero_mat = gpu.color_mat(
-        gpu.new_color(0,0,0,0),
-        gpu.new_color(0,0,0,0),
-        gpu.new_color(0,0,0,0),
-        gpu.new_color(0,0,0,0)
-    );
-
-    static color_id_mat = gpu.color_mat(
-        gpu.new_color(1,0,0,0),
-        gpu.new_color(0,1,0,0),
-        gpu.new_color(0,0,1,0),
-        gpu.new_color(0,0,0,1)
-    );
-    
-    static new_color(red_percent,green_percent,blue_percent,alpha_percent){
-        return new Float32Array(
-            [
-                    red_percent,
-                    green_percent,
-                    blue_percent,
-                    alpha_percent
-               ]
-        );
-    }
-
-    static color_mat(new_red,new_green,new_blue,new_alpha){
-        if(
-            [new_red,new_green,new_blue,new_alpha].every(
-                (t) =>  
-                    typeof(t) === "object" && 
-                    t.constructor ===Float32Array.prototype.constructor &&
-                    t.length === 4
-            ) === true
-        ){
-            return new Float32Array(
-                [
-                    new_red[0],new_green[0],new_blue[0],new_alpha[0],
-                    new_red[1],new_green[1],new_blue[1],new_alpha[1],
-                    new_red[2],new_green[2],new_blue[2],new_alpha[2],
-                    new_red[3],new_green[3],new_blue[3],new_alpha[3]
-                ]
-            );
-        }else{
-            return null;
-        }
-    }
 }
-
-class dubois{
-
-    static #left_mat = gpu.color_mat(
-        gpu.new_color(0.4561000, 0.5004840, 0.1763810, 0.0),
-        gpu.new_color(-0.0400822, -0.0378246, -0.0157589, 0.0),
-        gpu.new_color(-0.0152161, -0.0205971, -0.00546856, 0.0),
-        gpu.new_color(0.0, 0.0, 0.0, 1.0)
-    );
-    
-    static #right_mat = gpu.color_mat(
-        gpu.new_color(-0.0434062, -0.0879330, -0.0015552, 0.0),
-        gpu.new_color(0.3784760, 0.7336400, -0.0184503, 0.0),
-        gpu.new_color(-0.0721527, -0.2125920, 1.1331900, 0.0),
-        gpu.new_color(0.0, 0.0, 0.0, 1.0)
-    );
-
-    /* required [Interface] */
-    static anaglyph(gpu_interface){
-        return (left,right) => gpu_interface(left,dubois.#left_mat,right,dubois.#right_mat);
-    }
-
-}
-
-class direct{
-
-    /* required [Interface] */
-    static draw(gpu_interface){
-        return (image) => gpu_interface(image);
-    }
-
-}
-
