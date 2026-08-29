@@ -1,12 +1,15 @@
 /**
  * search [Interface] for more info
- * webgpu: webgpu impl
- * webgl2: webgl2 impl
+ * webgpu [default]: webgpu impl
+ * webgl2 [backup]: webgl2 impl
  */
 class gpu{
     /*return Promise<[Interface]>*/
     static of(target_canvas,width,height){
-        //*
+        return webgpu.of(target_canvas,width,height)
+                     .catch( 
+                         __ => webgl2.of(target_canvas,width,height)
+                     );
     }
 
 
@@ -242,7 +245,7 @@ fn reduce(a: vec4<f32>,b: vec4<f32>) -> vec4<f32> {
             let tex_a = device.createTexture(
                 {
                     size: [width,height,1],
-                    format: gpu.#format,
+                    format: webgpu.#format,
                     usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST | GPUTextureUsage.RENDER_ATTACHMENT
                 }
             );
@@ -255,7 +258,7 @@ fn reduce(a: vec4<f32>,b: vec4<f32>) -> vec4<f32> {
             let tex_b = device.createTexture(
                 {
                     size: [width,height,1],
-                    format: gpu.#format,
+                    format: webgpu.#format,
                     usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST | GPUTextureUsage.RENDER_ATTACHMENT
                 }
             );
