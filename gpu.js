@@ -418,7 +418,7 @@ void main(){
     static #upload(gl,tex,image_bit_map){
         gl.bindTexture(gl.TEXTURE_2D,tex);
         gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL,true);
-        gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA8,gl.RGBA,gl.UNSIGNED_BYTE,image_bit_map);
+        gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA16F,gl.RGBA,gl.HALF_FLOAT,image_bit_map);
     }
 
     static #configure_color_space(gl){
