@@ -352,7 +352,7 @@ class webgl2{
     static #vertex_src = `#version 300 es
 void main(){
     float x = (float(gl_VertexID) - 1.0) * 3.0;
-    float y = (gl_VertexID == 1) ? -3.0 : 1.0;
+    float y = (gl_VertexID == 1) ? 3.0 : -1.0;
     gl_Position = vec4(x, y, 0.0, 1.0);
 }`;
 
@@ -417,7 +417,6 @@ void main(){
 
     static #upload(gl,tex,image_bit_map){
         gl.bindTexture(gl.TEXTURE_2D,tex);
-        gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL,true);
         gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA16F,gl.RGBA,gl.HALF_FLOAT,image_bit_map);
     }
 
