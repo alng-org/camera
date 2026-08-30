@@ -375,7 +375,7 @@ vec4 color(mat4 color_mat, sampler2D src_tex){
         1,      0,     0,  0,
         0,     -1,     0,  0,
         0,      0,     1,  0,
-        0,  Y-1.0,     0,  1
+        0,  Y-0.5,     0,  1
     );
     ivec2 coord = ivec2(
          (pos_mat * gl_FragCoord).xy
