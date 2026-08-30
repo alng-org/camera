@@ -32,7 +32,9 @@ class Horizon{
     }
 
     expect_locked(expect_what){
-        this.#quat_ref = expect_what === true ? this.#quat_now : null;
+        this.#quat_ref = expect_what === true
+            ? Horizon.#quat_mul(this.#quat_now,Horizon.#screen_correction(this.#screen_angle))
+            : null;
         this.track();
     }
 
@@ -43,11 +45,11 @@ class Horizon{
             this.#dot.setAttribute("fill","none");
             return;
         }
-        let [pitch,roll] = Horizon.#relative_pitch_roll(
-            this.#quat_ref,
+        let q_now_corrected = Horizon.#quat_mul(
             this.#quat_now,
-            this.#screen_angle
+            Horizon.#screen_correction(this.#screen_angle)
         );
+        let [pitch,roll] = Horizon.#relative_pitch_roll(this.#quat_ref,q_now_corrected);
         let px = Math.max(-1,Math.min(1,roll / this.#range));
         let py = Math.max(-1,Math.min(1,pitch / this.#range));
         this.#dot.setAttribute("cx",50 + px*40);
@@ -118,17 +120,13 @@ class Horizon{
         return [w,-x,-y,-z];
     }
 
-    static #relative_pitch_roll(q_ref,q_now,screen_angle){
-        let q_diff = Horizon.#quat_mul(q_now,Horizon.#quat_conj(q_ref));
-
+    static #screen_correction(screen_angle){
         let rad = -screen_angle * Math.PI / 180;
-        let q_screen = [Math.cos(rad/2),0,0,Math.sin(rad/2)];
-        q_diff = Horizon.#quat_mul(
-            Horizon.#quat_mul(q_screen,q_diff),
-            Horizon.#quat_conj(q_screen)
-        );
+        return [Math.cos(rad/2),0,0,Math.sin(rad/2)];
+    }
 
-        let [w,x,y,z] = q_diff;
+    static #relative_pitch_roll(q_ref,q_now){
+        let [w,x,y,z] = Horizon.#quat_mul(q_now,Horizon.#quat_conj(q_ref));
         let pitch = Math.asin(Math.max(-1,Math.min(1,2*(w*x - y*z)))) * 180/Math.PI;
         let roll  = Math.atan2(2*(w*y + x*z),1 - 2*(x*x + y*y)) * 180/Math.PI;
         return [pitch,roll];
