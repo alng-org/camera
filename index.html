@@ -67,7 +67,7 @@
             }
 
             #replace(img){
-                ref.#tools.horizon_expect_locked(img !== null);
+                this.#tools.horizon_expect_locked(img !== null);
                 this.#img?.close();
                 this.#img = img;
             }
@@ -512,7 +512,7 @@ or click right to cancel.`
 onload="init(
     document.getElementById('img_canvas'),
     document.getElementById('info'),
-    document.getElemmentById('horizon'),
+    document.getElementById('horizon'),
     document.getElementById('help')
 )">
     <div id="info"></div>
