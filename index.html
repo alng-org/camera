@@ -67,6 +67,7 @@
             }
 
             #replace(img){
+                ref.#tools.horizon_expect_locked(img !== null);
                 this.#img?.close();
                 this.#img = img;
             }
@@ -86,6 +87,7 @@
                 ref.#tools.gFrame(
                     (img) => {
                         ref.#tools.preview_2d(img);
+                        ref.#tools.horizon_track();
                         ref.#capture(ref,img);
                         rAF.#next_render(ref);
                     }
@@ -101,6 +103,7 @@
                                    left,
                                    right
                                );
+                            ref.#tools.horizon_track();
                             ref.#capture(ref,right);
                             rAF.#next_render(ref);
                         }
@@ -117,6 +120,7 @@
                                    left,
                                    right
                                );
+                            ref.#tools.horizon_track();
                             ref.#capture(ref,left);
                             rAF.#next_render(ref);
                         }
@@ -287,7 +291,7 @@
             
         }
 
-        function init(canvas,info,help){
+        function init(canvas,info,horizon,help){
             navigator.mediaDevices.getUserMedia(
                 {
                     audio:false,
@@ -298,7 +302,7 @@
                     }
                 }
             ).then(
-                (stream) => maxsize_stream(stream,canvas)
+                (stream) => maxsize_stream(stream,canvas,horizon)
         ).then(
                 (tools) => {
                     let c = new rAF(tools,info,canvas);
@@ -360,7 +364,7 @@ or click right to cancel.`
 
         }
 
-        function maxsize_stream(stream,canvas){
+        function maxsize_stream(stream,canvas,horizon){
             let track = stream.getVideoTracks()[0];
             let cap = track.getCapabilities();
             let cwidth = cap.width?.max;
@@ -400,6 +404,11 @@ or click right to cancel.`
                                 let imgc = new ImageCapture(track_full);
                                 let draw_2d = direct.draw(render);
                                 let draw_3d = dubois.anaglyph(render);
+                                /* [Horizon Interface]
+                                   Horizon.display_with(svg_element)
+                                   create Horizon instance, associate display with svg_element
+                                */
+                                let horizon_proc = Horizon.display_with(horizon);
                                 return {
                                     gFrame: (f)  => imgc.grabFrame().then(f).catch(
                                         (err) => {
@@ -407,7 +416,19 @@ or click right to cancel.`
                                         }
                                     ),
                                     preview_2d: draw_2d,
-                                    preview_3d: draw_3d
+                                    preview_3d: draw_3d,
+                                    /* [Horizon Interface]
+                                       Horizon::expect_locked(expect_what)
+                                       expect_what === true: locked horizon
+                                       exprct_what === false: unlocked horizon
+                                       note: expect_what is bool
+                                    */
+                                    horizon_expect_locked: (expect_what) => horizon_proc.expect_locked(expect_what),
+                                    /* [Horizon Interface]
+                                       Horizon::track()
+                                       track horizon, in render after draw each grabbed frame
+                                    */
+                                    horizon_track: () => horizon_proc.track()
                                 };
                             }
                         );
@@ -445,8 +466,9 @@ or click right to cancel.`
         
     </script>
     <script src="gpu.js"></script>
+    <script src="horizon.js"></script>
     <style>
-        canvas,#info{
+        canvas,#info,#horizon{
             position: fixed;
             left: 50%;
             top: 50%;
@@ -458,18 +480,23 @@ or click right to cancel.`
             height:100dvh;
             object-fit: contain;
         }
-        #info{
+        #horizon{
+            z-index:2;
+            width:30dvw;
+            height:30dvh;
+        }
+        #info,#horizon{
             pointer-events: none;
             color: white;
             opacity: 0.5;
-        }
+        }  
         #help{
             position:fixed;
             right: 5%;
             bottom: 5%;
         }
         #info,#help{
-            z-index:2;
+            z-index:3;
             font-family: emoji;
             font-weight:bold;
             font-size:1.5rem;
@@ -485,9 +512,14 @@ or click right to cancel.`
 onload="init(
     document.getElementById('img_canvas'),
     document.getElementById('info'),
+    document.getElemmentById('horizon'),
     document.getElementById('help')
 )">
     <div id="info"></div>
+    <svg id="horizon" 
+         viewBox="0 0 100 100" 
+         preserveAspectRatio="xMidYMid meet">
+    </svg>
     <canvas id="img_canvas"></canvas>
     <div id="help">❔</div>
 </body>
