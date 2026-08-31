@@ -33,26 +33,20 @@ class Horizon{
         }else{
             this.#pending = null;
             this.#ref = null;
-            this.#refresh_visibility();
         }
     }
 
     unable_show(){
         this.#suppressed = true;
-        this.#refresh_visibility();
     }
 
     enable_show(){
         this.#suppressed = false;
-        this.#refresh_visibility();
-    }
-
-    #refresh_visibility(){
-        let show = this.#ref !== null && this.#suppressed === false;
-        this.#svg.style.visibility = show ? "visible" : "hidden";
     }
 
     track(){
+        this.#svg.style.visibility =
+            (this.#ref !== null && this.#suppressed === false) ? "visible" : "hidden";
         if(this.#ref === null){
             return;
         }
@@ -78,7 +72,6 @@ class Horizon{
         if(this.#pending === true){
             this.#ref = Horizon.#roll_pitch(Horizon.#gravity(this.#quat_now));
             this.#pending = null;
-            this.#refresh_visibility();
         }
     }
 
