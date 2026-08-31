@@ -7,6 +7,7 @@ class Horizon{
     #quat_now = [1,0,0,0];
     #tolerance = 3;
     #range = 30;
+    #suppressed = false;
 
     constructor(svg){
         this.#svg = svg;
@@ -29,8 +30,23 @@ class Horizon{
         this.#quat_ref = expect_what === true
             ? Horizon.#quat_mul(this.#quat_now,Horizon.#screen_correction(this.#quat_now))
             : null;
-        this.#svg.style.visibility = expect_what === true ? "visible" : "hidden";
+        this.#refresh_visibility();
         this.track();
+    }
+
+    unable_show(){
+        this.#suppressed = true;
+        this.#refresh_visibility();
+    }
+
+    enable_show(){
+        this.#suppressed = false;
+        this.#refresh_visibility();
+    }
+
+    #refresh_visibility(){
+        let show = this.#quat_ref !== null && this.#suppressed === false;
+        this.#svg.style.visibility = show ? "visible" : "hidden";
     }
 
     track(){
