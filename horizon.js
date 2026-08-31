@@ -5,19 +5,13 @@ class Horizon{
     #dot;
     #quat_ref = null;
     #quat_now = [1,0,0,0];
-    #screen_angle;
     #tolerance = 3;
     #range = 30;
 
     constructor(svg){
         this.#svg = svg;
         this.#build();
-
-        this.#screen_angle = screen.orientation?.angle ?? 0;
-        screen.orientation?.addEventListener(
-            "change",
-            () => { this.#screen_angle = screen.orientation.angle; }
-        );
+        this.#svg.style.visibility = "hidden";
 
         Horizon.#request_permission().then(
             () => window.addEventListener(
@@ -33,21 +27,19 @@ class Horizon{
 
     expect_locked(expect_what){
         this.#quat_ref = expect_what === true
-            ? Horizon.#quat_mul(this.#quat_now,Horizon.#screen_correction(this.#screen_angle))
+            ? Horizon.#quat_mul(this.#quat_now,Horizon.#screen_correction(this.#quat_now))
             : null;
+        this.#svg.style.visibility = expect_what === true ? "visible" : "hidden";
         this.track();
     }
 
     track(){
         if(this.#quat_ref === null){
-            this.#dot.setAttribute("cx",50);
-            this.#dot.setAttribute("cy",50);
-            this.#dot.setAttribute("fill","none");
             return;
         }
         let q_now_corrected = Horizon.#quat_mul(
             this.#quat_now,
-            Horizon.#screen_correction(this.#screen_angle)
+            Horizon.#screen_correction(this.#quat_now)
         );
         let [pitch,roll] = Horizon.#relative_pitch_roll(this.#quat_ref,q_now_corrected);
         let px = Math.max(-1,Math.min(1,roll / this.#range));
@@ -55,7 +47,8 @@ class Horizon{
         this.#dot.setAttribute("cx",50 + px*40);
         this.#dot.setAttribute("cy",50 - py*40);
         let aligned = Math.abs(pitch) < this.#tolerance && Math.abs(roll) < this.#tolerance;
-        this.#dot.setAttribute("fill",aligned ? "currentColor" : "none");
+        this.#dot.setAttribute("fill",aligned ? "#4ADE80" : "none");
+        this.#dot.setAttribute("stroke",aligned ? "#4ADE80" : "currentColor");
     }
 
     #update({alpha,beta,gamma}){
@@ -120,8 +113,16 @@ class Horizon{
         return [w,-x,-y,-z];
     }
 
-    static #screen_correction(screen_angle){
-        let rad = -screen_angle * Math.PI / 180;
+    static #to_device_frame(q,v){
+        let qv = [0,v[0],v[1],v[2]];
+        let t = Horizon.#quat_mul(Horizon.#quat_conj(q),qv);
+        let r = Horizon.#quat_mul(t,q);
+        return [r[1],r[2],r[3]];
+    }
+
+    static #screen_correction(q){
+        let g = Horizon.#to_device_frame(q,[0,0,-1]);
+        let rad = -Math.atan2(g[0],-g[1]);
         return [Math.cos(rad/2),0,0,Math.sin(rad/2)];
     }
 
