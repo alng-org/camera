@@ -4,6 +4,7 @@ class Horizon{
     #svg;
     #dot;
     #ref = null;
+    #pending = null;
     #quat_now = [1,0,0,0];
     #tolerance = 3;
     #range = 30;
@@ -27,11 +28,14 @@ class Horizon{
     }
 
     expect_locked(expect_what){
-        this.#ref = expect_what === true
-            ? Horizon.#roll_pitch(Horizon.#gravity(this.#quat_now))
-            : null;
-        this.#refresh_visibility();
-        this.track();
+        if(expect_what === true){
+            this.#pending = true;
+        }else{
+            this.#pending = null;
+            this.#ref = null;
+            this.#refresh_visibility();
+            this.track();
+        }
     }
 
     unable_show(){
@@ -72,6 +76,11 @@ class Horizon{
             return;
         }
         this.#quat_now = Horizon.#euler_to_quat(alpha,beta,gamma);
+        if(this.#pending === true){
+            this.#ref = Horizon.#roll_pitch(Horizon.#gravity(this.#quat_now));
+            this.#pending = null;
+            this.#refresh_visibility();
+        }
     }
 
     #build(){
