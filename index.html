@@ -331,6 +331,7 @@
                             start,
                             (e) => {
                                 e.preventDefault();
+                                tools.horizon_unable_show();
                                 let old_info = replace_info(
                                     info,
 `\
@@ -343,7 +344,10 @@ or click right to cancel.`
                                 );
                                 help.addEventListener(
                                     end,
-                                    (e) => replace_info(info,old_info),
+                                    (e) => {
+                                        replace_info(info,old_info);
+                                        tools.horizon_enable_show();
+                                    },
                                     { once:true }
                                 );
                             }
@@ -426,7 +430,17 @@ or click right to cancel.`
                                        Horizon::track()
                                        track horizon, in render after draw each grabbed frame
                                     */
-                                    horizon_track: () => horizon_proc.track()
+                                    horizon_track: () => horizon_proc.track(),
+                                    /* [Horizon Interface]
+                                       Horizon::unable_show()
+                                       unable to show horizon, means hide horizon
+                                    */
+                                    horizon_unable_show: () => horizon_proc.unable_show(),
+                                    /* [Horizon Interface]
+                                       Horizon::enable_show()
+                                       enable to show horizon, means show horizon if available
+                                    */
+                                    horizon_enable_show: () => horizon_proc.enable_show()
                                 };
                             }
                         );
