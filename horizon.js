@@ -34,7 +34,6 @@ class Horizon{
             this.#pending = null;
             this.#ref = null;
             this.#refresh_visibility();
-            this.track();
         }
     }
 
