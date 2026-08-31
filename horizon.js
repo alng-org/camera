@@ -38,15 +38,21 @@ class Horizon{
 
     unable_show(){
         this.#suppressed = true;
+        this.#apply_visibility();
     }
 
     enable_show(){
         this.#suppressed = false;
+        this.#apply_visibility();
+    }
+
+    #apply_visibility(){
+        this.#svg.style.visibility =
+            (this.#ref !== null && this.#suppressed === false) ? "visible" : "hidden";
     }
 
     track(){
-        this.#svg.style.visibility =
-            (this.#ref !== null && this.#suppressed === false) ? "visible" : "hidden";
+        this.#apply_visibility();
         if(this.#ref === null){
             return;
         }
