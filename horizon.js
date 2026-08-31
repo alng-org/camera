@@ -3,7 +3,7 @@ class Horizon{
 
     #svg;
     #dot;
-    #quat_ref = null;
+    #ref = null;
     #quat_now = [1,0,0,0];
     #tolerance = 3;
     #range = 30;
@@ -27,8 +27,8 @@ class Horizon{
     }
 
     expect_locked(expect_what){
-        this.#quat_ref = expect_what === true
-            ? Horizon.#quat_mul(this.#quat_now,Horizon.#screen_correction(this.#quat_now))
+        this.#ref = expect_what === true
+            ? Horizon.#roll_pitch(Horizon.#gravity(this.#quat_now))
             : null;
         this.#refresh_visibility();
         this.track();
@@ -45,19 +45,19 @@ class Horizon{
     }
 
     #refresh_visibility(){
-        let show = this.#quat_ref !== null && this.#suppressed === false;
+        let show = this.#ref !== null && this.#suppressed === false;
         this.#svg.style.visibility = show ? "visible" : "hidden";
     }
 
     track(){
-        if(this.#quat_ref === null){
+        if(this.#ref === null){
             return;
         }
-        let q_now_corrected = Horizon.#quat_mul(
-            this.#quat_now,
-            Horizon.#screen_correction(this.#quat_now)
-        );
-        let [pitch,roll] = Horizon.#relative_pitch_roll(this.#quat_ref,q_now_corrected);
+        let [roll_now,pitch_now] = Horizon.#roll_pitch(Horizon.#gravity(this.#quat_now));
+        let [roll_ref,pitch_ref] = this.#ref;
+        let roll  = Horizon.#wrap180(roll_now - roll_ref);
+        let pitch = pitch_now - pitch_ref;
+
         let px = Math.max(-1,Math.min(1,roll / this.#range));
         let py = Math.max(-1,Math.min(1,pitch / this.#range));
         this.#dot.setAttribute("cx",50 + px*40);
@@ -129,24 +129,21 @@ class Horizon{
         return [w,-x,-y,-z];
     }
 
-    static #to_device_frame(q,v){
-        let qv = [0,v[0],v[1],v[2]];
+    static #gravity(q){
+        let qv = [0,0,0,-1];
         let t = Horizon.#quat_mul(Horizon.#quat_conj(q),qv);
         let r = Horizon.#quat_mul(t,q);
         return [r[1],r[2],r[3]];
     }
 
-    static #screen_correction(q){
-        let g = Horizon.#to_device_frame(q,[0,0,-1]);
-        let rad = -Math.atan2(g[0],-g[1]);
-        return [Math.cos(rad/2),0,0,Math.sin(rad/2)];
+    static #roll_pitch([gx,gy,gz]){
+        let roll  = Math.atan2(gx,-gy) * 180/Math.PI;
+        let pitch = Math.atan2(-gz,Math.sqrt(gx*gx + gy*gy)) * 180/Math.PI;
+        return [roll,pitch];
     }
 
-    static #relative_pitch_roll(q_ref,q_now){
-        let [w,x,y,z] = Horizon.#quat_mul(q_now,Horizon.#quat_conj(q_ref));
-        let pitch = Math.asin(Math.max(-1,Math.min(1,2*(w*x - y*z)))) * 180/Math.PI;
-        let roll  = Math.atan2(2*(w*y + x*z),1 - 2*(x*x + y*y)) * 180/Math.PI;
-        return [pitch,roll];
+    static #wrap180(deg){
+        return ((deg + 180) % 360 + 360) % 360 - 180;
     }
 
 }
