@@ -59,7 +59,10 @@
                 );  
                 screen.orientation.addEventListener(
                     "change",
-                    (e) => rAF.#capture_cancel(this)
+                    (e) => {
+                        tools.horizon_update_rotation_matrix();
+                        rAF.#capture_cancel(this);
+                    }
                 );
                 
             }
@@ -85,7 +88,6 @@
                 ref.#tools.gFrame(
                     (img) => {
                         ref.#tools.preview_2d(img);
-                        ref.#tools.horizon_track();
                         ref.#capture(ref,img);
                         rAF.#next_render(ref);
                     }
@@ -101,7 +103,6 @@
                                    left,
                                    right
                                );
-                            ref.#tools.horizon_track();
                             ref.#capture(ref,right);
                             rAF.#next_render(ref);
                         }
@@ -118,7 +119,6 @@
                                    left,
                                    right
                                );
-                            ref.#tools.horizon_track();
                             ref.#capture(ref,left);
                             rAF.#next_render(ref);
                         }
@@ -421,16 +421,20 @@ or click right to cancel.`
                                     preview_3d: draw_3d,
                                     /* [Horizon Interface]
                                        Horizon::expect_locked(expect_what)
-                                       expect_what === true: locked horizon
-                                       expect_what === false: unlocked horizon
-                                       note: expect_what is bool
+                                       expect_what === true: 
+                                            expect to locked nearest device orientation as horizon,
+                                            then tracking and prompt to keep it
+                                       expect_what === false: 
+                                            unlocked horizon
+                                       note: 
+                                       expect_what is bool
                                     */
                                     horizon_expect_locked: (expect_what) => horizon_proc.expect_locked(expect_what),
                                     /* [Horizon Interface]
-                                       Horizon::track()
-                                       track horizon, in render after draw each grabbed frame
+                                       Horizon::update_rotation_matrix()
+                                       update rotation matrix due to screen orientation change
                                     */
-                                    horizon_track: () => horizon_proc.track(),
+                                    horizon_update_rotation_matrix: () => horizon_proc.update_rotation_matrix(),
                                     /* [Horizon Interface]
                                        Horizon::unable_show()
                                        unable to show horizon, means hide horizon
