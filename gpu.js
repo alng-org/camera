@@ -376,6 +376,7 @@ fn reduce(a: vec4<f32>,b: vec4<f32>) -> vec4<f32> {
 
 /* impl by Claude, under user guide
    fixed Y-Flip by me(user)
+   added sRGB<->linear gamma correction per Dubois 2009 paper, by Claude
 */
 class webgl2{
 
@@ -396,6 +397,22 @@ uniform mat4 mat_b;
 
 out vec4 out_color;
 
+vec4 decode(vec4 s){
+    return mix(
+        pow((s+0.055)/1.055, vec4(2.4)),
+        s/12.92,
+        lessThanEqual(s, vec4(0.04045))
+    );
+}
+
+vec4 encode(vec4 s){
+    return mix(
+        1.055*pow(s, vec4(1.0/2.4)) - 0.055,
+        12.92*s,
+        lessThanEqual(s, vec4(0.0031308))
+    );
+}
+
 vec4 color(mat4 color_mat, sampler2D src_tex){
     ivec2 tex_size = textureSize(src_tex,0);
     float Y = float(tex_size.y);
@@ -408,18 +425,18 @@ vec4 color(mat4 color_mat, sampler2D src_tex){
     ivec2 coord = ivec2(
          (pos_mat * gl_FragCoord).xy
     );
-    return color_mat * texelFetch(src_tex, coord, 0);
+    return color_mat * decode(texelFetch(src_tex, coord, 0));
 }
 
 vec4 reduce(vec4 a, vec4 b){
-    return a + b;
+    return clamp(a, 0.0, 1.0) + clamp(b, 0.0, 1.0);
 }
 
 void main(){
-    out_color = reduce(
+    out_color = encode(reduce(
         color(mat_a, tex_a),
         color(mat_b, tex_b)
-    );
+    ));
 }`;
 
     static #compile(gl,type,src){
