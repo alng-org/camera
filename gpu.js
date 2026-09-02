@@ -144,21 +144,11 @@ fn encode(s: vec4<f32>) -> vec4<f32> {
     );
 }
 
-fn clamp(s: vec4<f32>) -> vec4<f32> {
-    return min(
-        vec4<f32>(1),
-        max(
-             vec4<f32>(0),
-             s
-        )
-    );
-}
-
 fn color(P: vec4<f32>, color_mat: mat4x4<f32>, src_tex: texture_2d<f32>) -> vec4<f32> {
     return color_mat * decode(textureLoad( src_tex, vec2<i32>(P.xy), 0));
 }
 fn reduce(a: vec4<f32>,b: vec4<f32>) -> vec4<f32> {
-    return clamp(a) + clamp(b);
+    return clamp(a, 0.0,1.0) + clamp(b, 0.0,1.0);
 }`
         let shader = device.createShaderModule(
             {
