@@ -94,7 +94,7 @@ class direct{
 
 }
 
-/* impl by me, under Gemini guide */
+/* impl by me, under Gemini & Claude guide */
 class webgpu{
 
     static #format = "rgba16float";
@@ -127,17 +127,30 @@ fn fragment(@builtin(position) P: vec4<f32>) -> @location(0) vec4<f32> {
 
 fn decode(s: vec4<f32>) -> vec4<f32> {
     return select(
-        pow(((s+0.055)/1.055),2.4),
+        pow(
+             ((s+0.055)/1.055),
+             vec4<f32>(2.4)
+        ),
         s/12.92,
-        s<=0.04045
+        s<=vec4<f32>(0.04045)
     );
 }
 
 fn encode(s: vec4<f32>) -> vec4<f32> {
     return select(
-        1.055*pow(s,1/2.4)-0.055,
-        12.92*S,
-        s<=0.0031308
+        1.055*pow( s, vec4<f32>(1/2.4) )-0.055,
+        12.92*s,
+        s<=vec4<f32>(0.0031308)
+    );
+}
+
+fn clamp(s: vec4<f32>) -> vec4<f32> {
+    return min(
+        vec4<f32>(1),
+        max(
+             vec4<f32>(0),
+             s
+        )
     );
 }
 
@@ -145,7 +158,7 @@ fn color(P: vec4<f32>, color_mat: mat4x4<f32>, src_tex: texture_2d<f32>) -> vec4
     return color_mat * decode(textureLoad( src_tex, vec2<i32>(P.xy), 0));
 }
 fn reduce(a: vec4<f32>,b: vec4<f32>) -> vec4<f32> {
-    return a + b;
+    return clamp(a) + clamp(b);
 }`
         let shader = device.createShaderModule(
             {
