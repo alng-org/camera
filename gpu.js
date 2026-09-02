@@ -148,13 +148,7 @@ fn color(P: vec4<f32>, color_mat: mat4x4<f32>, src_tex: texture_2d<f32>) -> vec4
     return color_mat * decode(textureLoad( src_tex, vec2<i32>(P.xy), 0));
 }
 fn reduce(a: vec4<f32>,b: vec4<f32>) -> vec4<f32> {
-    return clamp(
-                  a,
-                  vec4<f32>(0), vec4<f32>(1)
-           ) + clamp(
-                  b,
-                  vec4<f32>(0), vec4<f32>(1)
-           );
+    return a + b;
 }`;
         let shader = device.createShaderModule(
             {
