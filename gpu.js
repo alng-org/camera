@@ -138,7 +138,7 @@ fn decode(s: vec4<f32>) -> vec4<f32> {
 
 fn encode(s: vec4<f32>) -> vec4<f32> {
     return select(
-        1.055*pow( s, vec4<f32>(1/2.4) )-0.055,
+        1.055*pow( s, vec4<f32>(1.0/2.4) )-0.055,
         12.92*s,
         s<=vec4<f32>(0.0031308)
     );
