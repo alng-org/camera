@@ -94,7 +94,7 @@ class direct{
 
 }
 
-/* impl by me, under Gemini guide */
+/* impl by me, under Gemini & Claude guide */
 class webgpu{
 
     static #format = "rgba16float";
@@ -117,17 +117,39 @@ fn vertex(@builtin(vertex_index) index: u32) -> @builtin(position) vec4<f32>{
 @group(0) @binding(3) var<uniform> mat_b: mat4x4<f32>;
 @fragment
 fn fragment(@builtin(position) P: vec4<f32>) -> @location(0) vec4<f32> {
-    return reduce(
-        color(P,mat_a,tex_a),
-        color(P,mat_b,tex_b)
+    return encode(
+        reduce(
+            color(P,mat_a,tex_a),
+            color(P,mat_b,tex_b)
+        )
     );
 }
+
+fn decode(s: vec4<f32>) -> vec4<f32> {
+    return select(
+        pow(
+             ((s+0.055)/1.055),
+             vec4<f32>(2.4)
+        ),
+        s/12.92,
+        s<=vec4<f32>(0.04045)
+    );
+}
+
+fn encode(s: vec4<f32>) -> vec4<f32> {
+    return select(
+        1.055*pow( s, vec4<f32>(1.0/2.4) )-0.055,
+        12.92*s,
+        s<=vec4<f32>(0.0031308)
+    );
+}
+
 fn color(P: vec4<f32>, color_mat: mat4x4<f32>, src_tex: texture_2d<f32>) -> vec4<f32> {
-    return color_mat * textureLoad( src_tex, vec2<i32>(P.xy), 0);
+    return color_mat * decode(textureLoad( src_tex, vec2<i32>(P.xy), 0));
 }
 fn reduce(a: vec4<f32>,b: vec4<f32>) -> vec4<f32> {
     return a + b;
-}`
+}`;
         let shader = device.createShaderModule(
             {
                 label:"ushader",
@@ -348,6 +370,7 @@ fn reduce(a: vec4<f32>,b: vec4<f32>) -> vec4<f32> {
 
 /* impl by Claude, under user guide
    fixed Y-Flip by me(user)
+   added sRGB<->linear gamma correction per Dubois 2009 paper, by Claude
 */
 class webgl2{
 
@@ -368,6 +391,22 @@ uniform mat4 mat_b;
 
 out vec4 out_color;
 
+vec4 decode(vec4 s){
+    return mix(
+        pow((s+0.055)/1.055, vec4(2.4)),
+        s/12.92,
+        lessThanEqual(s, vec4(0.04045))
+    );
+}
+
+vec4 encode(vec4 s){
+    return mix(
+        1.055*pow(s, vec4(1.0/2.4)) - 0.055,
+        12.92*s,
+        lessThanEqual(s, vec4(0.0031308))
+    );
+}
+
 vec4 color(mat4 color_mat, sampler2D src_tex){
     ivec2 tex_size = textureSize(src_tex,0);
     float Y = float(tex_size.y);
@@ -380,18 +419,18 @@ vec4 color(mat4 color_mat, sampler2D src_tex){
     ivec2 coord = ivec2(
          (pos_mat * gl_FragCoord).xy
     );
-    return color_mat * texelFetch(src_tex, coord, 0);
+    return color_mat * decode(texelFetch(src_tex, coord, 0));
 }
 
 vec4 reduce(vec4 a, vec4 b){
-    return a + b;
+    return clamp(a, 0.0, 1.0) + clamp(b, 0.0, 1.0);
 }
 
 void main(){
-    out_color = reduce(
+    out_color = encode(reduce(
         color(mat_a, tex_a),
         color(mat_b, tex_b)
-    );
+    ));
 }`;
 
     static #compile(gl,type,src){
