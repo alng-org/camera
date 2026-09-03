@@ -423,7 +423,7 @@ vec4 color(mat4 color_mat, sampler2D src_tex){
 }
 
 vec4 reduce(vec4 a, vec4 b){
-    return clamp(a, 0.0, 1.0) + clamp(b, 0.0, 1.0);
+    return a + b;
 }
 
 void main(){
