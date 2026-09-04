@@ -2,19 +2,26 @@
 class Horizon{
 
     #svg;
-    #ref = null;
-    #ref_setter = Horizon.#nop_ref;
-    #rotation_transform = null;
+    #prepared_to_show = false; // true if prepared to show
     #show_able = true;
+    #ref;
+    #ref_setter;
+    #rotation_transform;
 
     static #nop_ref(it,__){
         return;
     }
     
-    static #locked_ref(it,orientation){
+    static #locked_ref(
+        it,
+        orientation = {
+            alpha: null,
+            beta: null,
+            gamma: null
+        }
+    ){
         it.#ref_setter = Horizon.#nop_ref;
         it.#ref = orientation;
-        it.#apply_visibility();
     }
 
     static #request_permission(){
@@ -31,24 +38,36 @@ class Horizon{
     #apply_visibility(){
         this.#svg.style.visibility =
             (
-                this.#ref !== null && 
+                this.#prepared_to_show === true && 
                 this.#show_able === true
             ) ? "visible" : "hidden";
     }
 
     #tracking(orientation){
-        
+        let angle = this.#rotation_transform(orientation);
+        let ref_angle = this.#rotation_transform(this.#ref);
+        this.#svg_update(angle,ref_angle);
+        this.#apply_visibility();
     }
 
     #svg_init(){
-        
+        /* init svg */
+    }
+    #svg_update(angle,ref_angle){
+        /*
+           def angle => note above Horizon::update_rotation_transform()
+           param angle => angle for now, maybe null if unavailable
+           param ref_angle => angle for ref to keep, maybe null if no ref
+           update svg,
+           set Horizon::#prepared_to_show to what you need
+        */
     }
 
     constructor(svg){
+        this.update_rotation_transform();
+        Horizon.#locked_ref(this);
         this.#svg = svg;
         this.#svg_init();
-        this.update_rotation_transform();
-        this.#apply_visibility();
         Horizon.#request_permission().then(
             () => window.addEventListener(
                 "deviceorientation",
@@ -68,7 +87,7 @@ class Horizon{
         if(expect_what === true){
             this.#ref_setter = Horizon.#locked_ref;
         }else{
-            Horizon.#locked_ref(this,null);
+            Horizon.#locked_ref(this);
         }
     }
 
