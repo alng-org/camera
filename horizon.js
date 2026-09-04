@@ -1,4 +1,4 @@
-/* framework by me*/
+/* framework by me, cowork with ChatGPT and Claude*/
 class Horizon{
 
     #svg;
@@ -87,15 +87,13 @@ class Horizon{
        let type = screen.orientation?.type ?? "";
        switch (type) {
            case "portrait-primary":
-               // this.#rotation_transform =
-               // beta 0 180
+               this.#rotation_transform = ({beta}) => beta;
                break;
            case "portrait-secondary":
-               // this.#rotation_transform =
-               // beta 0 -180
+               this.#rotation_transform = ({beta}) => -beta;
                break;
            case "landscape-primary":
-               // this.#rotation_transform =
+               // this.#rotation_transform = ({gamma}) =>
                // gamma 0 -90 90 0
                break;
            case "landscape-secondary":
