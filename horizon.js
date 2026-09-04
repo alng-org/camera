@@ -109,7 +109,7 @@ class Horizon{
          |    /
          |   / angle (_ anticlockwise turn to /)
          |  /______
-         legend: 
+         side view, legend: 
              | user
              / phone
              _ horizons
