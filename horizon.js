@@ -67,6 +67,7 @@ class Horizon{
         this.update_rotation_transform();
         Horizon.#locked_ref(this);
         this.#svg = svg;
+        this.#apply_visibility();
         this.#svg_init();
         Horizon.#request_permission().then(
             () => window.addEventListener(
