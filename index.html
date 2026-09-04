@@ -60,7 +60,7 @@
                 screen.orientation.addEventListener(
                     "change",
                     (e) => {
-                        tools.horizon_update_rotation_matrix();
+                        tools.horizon_update_rotation_transform();
                         rAF.#capture_cancel(this);
                     }
                 );
@@ -431,10 +431,10 @@ or click right to cancel.`
                                     */
                                     horizon_expect_locked: (expect_what) => horizon_proc.expect_locked(expect_what),
                                     /* [Horizon Interface]
-                                       Horizon::update_rotation_matrix()
-                                       update rotation matrix due to screen orientation change
+                                       Horizon::update_rotation_transform()
+                                       update rotation transform due to screen orientation change
                                     */
-                                    horizon_update_rotation_matrix: () => horizon_proc.update_rotation_matrix(),
+                                    horizon_update_rotation_transform: () => horizon_proc.update_rotation_transform(),
                                     /* [Horizon Interface]
                                        Horizon::unable_show()
                                        unable to show horizon, means hide horizon
