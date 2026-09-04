@@ -7,6 +7,9 @@ class Horizon{
     #ref;
     #ref_setter;
     #rotation_transform;
+    #needle;
+    #refline;
+    static #match_tolerance = 1;
 
     static #nop_ref(it,__){
         return;
@@ -51,16 +54,93 @@ class Horizon{
     }
 
     #svg_init(){
-        /* init svg */
+        const ns = "http://www.w3.org/2000/svg";
+        const cx = 50, cy = 50, r = 40;
+        
+        let bg = document.createElementNS(ns,"circle");
+        bg.setAttribute("cx",cx);
+        bg.setAttribute("cy",cy);
+        bg.setAttribute("r",r);
+        bg.setAttribute("fill","none");
+        bg.setAttribute("stroke","white");
+        bg.setAttribute("stroke-opacity","0.4");
+        this.#svg.appendChild(bg);
+        
+        this.#refline = document.createElementNS(ns,"line");
+        this.#refline.setAttribute("x1",cx - r);
+        this.#refline.setAttribute("y1",cy);
+        this.#refline.setAttribute("x2",cx + r);
+        this.#refline.setAttribute("y2",cy);
+        this.#refline.setAttribute("stroke","yellow");
+        this.#refline.setAttribute("stroke-dasharray","4 3");
+        this.#refline.setAttribute("visibility","hidden");
+        this.#svg.appendChild(this.#refline);
+        
+        this.#needle = document.createElementNS(ns,"line");
+        this.#needle.setAttribute("x1",cx - r);
+        this.#needle.setAttribute("y1",cy);
+        this.#needle.setAttribute("x2",cx + r);
+        this.#needle.setAttribute("y2",cy);
+        this.#needle.setAttribute("stroke","white");
+        this.#needle.setAttribute("stroke-width","2");
+        this.#svg.appendChild(this.#needle);
+        
+        let dot = document.createElementNS(ns,"circle");
+        dot.setAttribute("cx",cx);
+        dot.setAttribute("cy",cy);
+        dot.setAttribute("r",2);
+        dot.setAttribute("fill","white");
+        this.#svg.appendChild(dot);
     }
+    
+    static #min_diff(angle,ref_angle){
+        let a_candidates = (angle === 0) ? [0,180] : [angle];
+        let r_candidates = (ref_angle === 0) ? [0,180] : [ref_angle];
+        let best = Infinity;
+        for(let a of a_candidates){
+            for(let r of r_candidates){
+                best = Math.min(best, Math.abs(a - r));
+            }
+        }
+        return best;
+    }
+    
     #svg_update(angle,ref_angle){
-        /*
-           def angle => note above Horizon::update_rotation_transform()
-           param angle => angle for now, maybe null if unavailable
-           param ref_angle => angle for ref to keep, maybe null if no ref
-           update svg,
-           set Horizon::#prepared_to_show to what you need
-        */
+        const cx = 50, cy = 50;
+        
+        if(angle === null){
+            this.#prepared_to_show = false;
+            return;
+        }
+        this.#prepared_to_show = true;
+        
+        this.#needle.setAttribute(
+            "transform",
+            `rotate(${-angle} ${cx} ${cy})`
+        );
+        
+        if(ref_angle === null){
+            this.#refline.setAttribute("visibility","hidden");
+            this.#needle.setAttribute("stroke","white");
+            return;
+        }
+        
+        this.#refline.setAttribute("visibility","visible");
+        this.#refline.setAttribute(
+            "transform",
+            `rotate(${-ref_angle} ${cx} ${cy})`
+        );
+        
+        let involves_zero = (angle === 0 || ref_angle === 0);
+        let T = Horizon.#min_diff(angle,ref_angle);
+        
+        if(T <= Horizon.#match_tolerance && !involves_zero){
+            this.#needle.setAttribute("stroke","#00e676");
+        }else if(T <= Horizon.#match_tolerance && involves_zero){
+            this.#needle.setAttribute("stroke","#ffd600");
+        }else{
+            this.#needle.setAttribute("stroke","white");
+        }
     }
 
     constructor(svg){
