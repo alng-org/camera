@@ -82,23 +82,60 @@ class Horizon{
         this.#apply_visibility();
     }
 
-
+    /*
+      this.#rotation_transform({alpha,beta,gamma}) -> angle
+      angle === null => failed to get angle
+      angle <- [0,180] => angle 
+         |    /
+         |   / angle (_ anticlockwise turn to /)
+         |  /______
+         legend: 
+             | user
+             / phone
+             _ horizons
+         note: 
+              1. phone screen face to user
+              2. angle === 180 return as 0
+         
+    */
     update_rotation_transform(){
-       let type = screen.orientation?.type ?? "";
+       let type = screen.orientation?.angle ?? -1;
        switch (type) {
-           case "portrait-primary":
-               this.#rotation_transform = ({beta}) => beta;
+           case 0:
+               this.#rotation_transform = ({beta}) => {
+                   if(0 <= beta && beta <= 180){
+                       return beta % 180;
+                   }else{
+                       return null;
+                   }
+               };
                break;
-           case "portrait-secondary":
-               this.#rotation_transform = ({beta}) => -beta;
+           case 180:
+               this.#rotation_transform = ({beta}) => {
+                   if(-180 <= beta && beta <= 0){
+                       return (beta + 180) % 180;
+                   }else{
+                       return null;
+                   }
+               };
                break;
-           case "landscape-primary":
-               // this.#rotation_transform = ({gamma}) =>
-               // gamma 0 -90 90 0
+           case 90:
+               this.#rotation_transform = ({gamma}) => {
+                   if(-90 <= gamma && gamma <= 90){
+                       return (-gamma + (gamma <= 0 ? 0 : 180)) % 180;
+                   }else{
+                       return null;
+                   }
+               };
                break;
-           case "landscape-secondary":
-               // this.#rotation_transform =
-               // gamma 0 90 -90 0
+           case 270:
+               this.#rotation_transform = ({gamma}) => {
+                   if(-90 <= gamma && gamma <= 90){
+                       return (gamma + (0 <= gamma ? 0 : 180)) % 180;
+                   }else{
+                       return null;
+                   }
+               };
                break;
            default:
                this.#rotation_transform = (_) => null;
