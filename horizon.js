@@ -88,15 +88,19 @@ class Horizon{
        switch (type) {
            case "portrait-primary":
                // this.#rotation_matrix =
+               // beta 0 180
                break;
            case "portrait-secondary":
                // this.#rotation_matrix =
+               // beta 0 -180
                break;
            case "landscape-primary":
                // this.#rotation_matrix =
+               // gamma 0 -90 90 0
                break;
            case "landscape-secondary":
                // this.#rotation_matrix =
+               // gamma 0 90 -90 0
                break;
            default:
                this.#rotation_matrix = null;
