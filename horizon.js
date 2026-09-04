@@ -4,7 +4,7 @@ class Horizon{
     #svg;
     #ref = null;
     #ref_setter = Horizon.#nop_ref;
-    #rotation_matrix = null;
+    #rotation_transform = null;
     #show_able = true;
 
     static #nop_ref(it,__){
@@ -47,7 +47,7 @@ class Horizon{
     constructor(svg){
         this.#svg = svg;
         this.#svg_init();
-        this.update_rotation_matrix();
+        this.update_rotation_transform();
         this.#apply_visibility();
         Horizon.#request_permission().then(
             () => window.addEventListener(
@@ -83,27 +83,27 @@ class Horizon{
     }
 
 
-    update_rotation_matrix(){
+    update_rotation_transform(){
        let type = screen.orientation?.type ?? "";
        switch (type) {
            case "portrait-primary":
-               // this.#rotation_matrix =
+               // this.#rotation_transform =
                // beta 0 180
                break;
            case "portrait-secondary":
-               // this.#rotation_matrix =
+               // this.#rotation_transform =
                // beta 0 -180
                break;
            case "landscape-primary":
-               // this.#rotation_matrix =
+               // this.#rotation_transform =
                // gamma 0 -90 90 0
                break;
            case "landscape-secondary":
-               // this.#rotation_matrix =
+               // this.#rotation_transform =
                // gamma 0 90 -90 0
                break;
            default:
-               this.#rotation_matrix = null;
+               this.#rotation_transform = (_) => null;
                break;
        } 
     }
