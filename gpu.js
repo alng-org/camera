@@ -372,6 +372,7 @@ fn reduce(a: vec4<f32>,b: vec4<f32>) -> vec4<f32> {
    fixed Y-Flip: requested by user, impl by Claude
    sRGB<->linear gamma correction per Dubois 2009 paper: requested by user, impl by Claude
    texStorage2D + texSubImage2D instead of per-frame texImage2D: bug found and fixed by Claude
+   removed redundant clear + per-pixel mat4 for Y-flip, hoisted static per-frame GL state: bug found and fixed by Claude
 */
 class webgl2{
 
@@ -411,15 +412,7 @@ vec4 encode(vec4 s){
 vec4 color(mat4 color_mat, sampler2D src_tex){
     ivec2 tex_size = textureSize(src_tex,0);
     float Y = float(tex_size.y);
-    mat4 pos_mat = mat4(
-        1,      0,     0,  0,
-        0,     -1,     0,  0,
-        0,      0,     1,  0,
-        0,  Y-0.5,     0,  1
-    );
-    ivec2 coord = ivec2(
-         (pos_mat * gl_FragCoord).xy
-    );
+    ivec2 coord = ivec2(gl_FragCoord.x, Y - 0.5 - gl_FragCoord.y);
     return color_mat * decode(texelFetch(src_tex, coord, 0));
 }
 
@@ -500,6 +493,11 @@ void main(){
         let loc_tex_b = gl.getUniformLocation(program,"tex_b");
         let loc_mat_b = gl.getUniformLocation(program,"mat_b");
 
+        gl.useProgram(program);
+        gl.bindVertexArray(vao);
+        gl.uniform1i(loc_tex_a,0);
+        gl.uniform1i(loc_tex_b,1);
+
         let same_size = (image_bit_map_a,image_bit_map_b) =>
             [image_bit_map_a,image_bit_map_b].every(
                 (tex) =>
@@ -549,21 +547,14 @@ void main(){
             webgl2.#upload(gl,tex_a,image_bit_map_a);
             webgl2.#upload(gl,tex_b,image_bit_map_b);
 
-            gl.useProgram(program);
-            gl.bindVertexArray(vao);
-
             gl.activeTexture(gl.TEXTURE0);
             gl.bindTexture(gl.TEXTURE_2D,tex_a);
-            gl.uniform1i(loc_tex_a,0);
             gl.uniformMatrix4fv(loc_mat_a,false,color_mat_a);
 
             gl.activeTexture(gl.TEXTURE1);
             gl.bindTexture(gl.TEXTURE_2D,tex_b);
-            gl.uniform1i(loc_tex_b,1);
             gl.uniformMatrix4fv(loc_mat_b,false,color_mat_b);
 
-            gl.clearColor(0,0,0,1);
-            gl.clear(gl.COLOR_BUFFER_BIT);
             gl.drawArrays(gl.TRIANGLES,0,3);
         };
     }
