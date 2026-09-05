@@ -487,8 +487,12 @@ void main(){
         webgl2.#configure_color_space(gl);
 
         let program = webgl2.#program(gl);
-        let tex_a = webgl2.#texture(gl,width,height);
-        let tex_b = webgl2.#texture(gl,width,height);
+
+        let tex_a_0 = webgl2.#texture(gl,width,height);
+        let tex_b_0 = webgl2.#texture(gl,width,height);
+        let tex_a_1 = webgl2.#texture(gl,height,width);
+        let tex_b_1 = webgl2.#texture(gl,height,width);
+
         let vao = gl.createVertexArray();
 
         let loc_tex_a = gl.getUniformLocation(program,"tex_a");
@@ -503,6 +507,16 @@ void main(){
                     tex.width === image_bit_map_a.width &&
                     tex.height === image_bit_map_a.height
             );
+
+        let pick_pair = (w,h) => {
+            if(w === width && h === height){
+                return [tex_a_0,tex_b_0];
+            }else if(w === height && h === width){
+                return [tex_a_1,tex_b_1];
+            }else{
+                return null;
+            }
+        };
 
         /*[Interface]*/
         return (
@@ -520,6 +534,13 @@ void main(){
                 console.error("gpu>> Cannot render, you might have two images of different sizes");
                 return;
             }
+
+            let pair = pick_pair(image_bit_map_a.width,image_bit_map_a.height);
+            if(pair === null){
+                console.error("gpu>> Cannot render, image size does not match either orientation");
+                return;
+            }
+            let [tex_a,tex_b] = pair;
 
             target_canvas.width = image_bit_map_a.width;
             target_canvas.height = image_bit_map_a.height;
