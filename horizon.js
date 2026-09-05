@@ -73,7 +73,7 @@ class Horizon{
         this.#refline.setAttribute("y2",cy);
         this.#refline.setAttribute("stroke","yellow");
         this.#refline.setAttribute("stroke-dasharray","4 3");
-        this.#refline.setAttribute("visibility","hidden");
+        this.#refline.style.display = "none";
         this.#svg.appendChild(this.#refline);
         
         this.#needle = document.createElementNS(ns,"line");
@@ -120,12 +120,12 @@ class Horizon{
         );
         
         if(ref_angle === null){
-            this.#refline.setAttribute("visibility","hidden");
+            this.#refline.style.display = "none";
             this.#needle.setAttribute("stroke","white");
             return;
         }
         
-        this.#refline.setAttribute("visibility","visible");
+        this.#refline.style.display = "";
         this.#refline.setAttribute(
             "transform",
             `rotate(${-ref_angle} ${cx} ${cy})`
