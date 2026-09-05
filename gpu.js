@@ -368,9 +368,10 @@ fn reduce(a: vec4<f32>,b: vec4<f32>) -> vec4<f32> {
 
 }
 
-/* impl by Claude, under user guide
-   fixed Y-Flip by me(user)
-   added sRGB<->linear gamma correction per Dubois 2009 paper, by Claude
+/* impl by Claude
+   fixed Y-Flip: requested by user, impl by Claude
+   sRGB<->linear gamma correction per Dubois 2009 paper: requested by user, impl by Claude
+   texStorage2D + texSubImage2D instead of per-frame texImage2D: bug found and fixed by Claude
 */
 class webgl2{
 
@@ -456,19 +457,20 @@ void main(){
         return program;
     }
 
-    static #texture(gl){
+    static #texture(gl,width,height){
         let tex = gl.createTexture();
         gl.bindTexture(gl.TEXTURE_2D,tex);
         gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.NEAREST);
         gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.NEAREST);
         gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE);
         gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);
+        gl.texStorage2D(gl.TEXTURE_2D,1,gl.RGBA16F,width,height);
         return tex;
     }
 
     static #upload(gl,tex,image_bit_map){
         gl.bindTexture(gl.TEXTURE_2D,tex);
-        gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA16F,gl.RGBA,gl.HALF_FLOAT,image_bit_map);
+        gl.texSubImage2D(gl.TEXTURE_2D,0,0,0,image_bit_map.width,image_bit_map.height,gl.RGBA,gl.HALF_FLOAT,image_bit_map);
     }
 
     static #configure_color_space(gl){
@@ -485,8 +487,8 @@ void main(){
         webgl2.#configure_color_space(gl);
 
         let program = webgl2.#program(gl);
-        let tex_a = webgl2.#texture(gl);
-        let tex_b = webgl2.#texture(gl);
+        let tex_a = webgl2.#texture(gl,width,height);
+        let tex_b = webgl2.#texture(gl,width,height);
         let vao = gl.createVertexArray();
 
         let loc_tex_a = gl.getUniformLocation(program,"tex_a");
