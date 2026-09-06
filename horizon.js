@@ -67,10 +67,11 @@ class Horizon{
         let defs = document.createElementNS(ns,"defs");
         let filter = document.createElementNS(ns,"filter");
         filter.setAttribute("id","glow");
-        filter.setAttribute("x","-50%");
-        filter.setAttribute("y","-50%");
-        filter.setAttribute("width","200%");
-        filter.setAttribute("height","200%");
+        filter.setAttribute("filterUnits","userSpaceOnUse");
+        filter.setAttribute("x", box.x - box.width*0.2);
+        filter.setAttribute("y", box.y - box.height*0.2);
+        filter.setAttribute("width", box.width*1.4);
+        filter.setAttribute("height", box.height*1.4);
 
         let blur = document.createElementNS(ns,"feGaussianBlur");
         blur.setAttribute("in","SourceGraphic");
@@ -97,15 +98,6 @@ class Horizon{
         defs.appendChild(filter);
         this.#svg.appendChild(defs);
 
-        let bg = document.createElementNS(ns,"circle");
-        bg.setAttribute("cx",cx);
-        bg.setAttribute("cy",cy);
-        bg.setAttribute("r",r);
-        bg.setAttribute("fill","none");
-        bg.setAttribute("stroke","white");
-        bg.setAttribute("stroke-opacity","0.4");
-        this.#svg.appendChild(bg);
-
         this.#refline = document.createElementNS(ns,"line");
         this.#refline.setAttribute("x1",cx - r);
         this.#refline.setAttribute("y1",cy);
@@ -113,6 +105,7 @@ class Horizon{
         this.#refline.setAttribute("y2",cy);
         this.#refline.setAttribute("stroke","yellow");
         this.#refline.setAttribute("stroke-dasharray","4 3");
+        this.#refline.setAttribute("filter","url(#glow)");
         this.#refline.style.display = "none";
         this.#svg.appendChild(this.#refline);
 
