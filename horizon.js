@@ -221,7 +221,7 @@ class Horizon{
                break;
            case 90:
                this.#rotation_transform = ({beta,gamma}) => {
-                   if(gamma !== null && beta !== null && gamma === 0 && (180 - Math.abs(beta)) < (0 - Math.abs(beta))){
+                   if(gamma !== null && beta !== null && gamma === 0 && (180 - Math.abs(beta)) < (Math.abs(beta) - 0)){
                        gamma = 180;
                    }else{
                        //pass
@@ -235,7 +235,7 @@ class Horizon{
                break;
            case 270:
                this.#rotation_transform = ({beta,gamma}) => {
-                   if(gamma !== null && beta !== null && gamma === 0 && (180 - Math.abs(beta)) < (0 - Math.abs(beta))){
+                   if(gamma !== null && beta !== null && gamma === 0 && (180 - Math.abs(beta)) < (Math.abs(beta) - 0)){
                        gamma = 180;
                    }else{
                        //pass
