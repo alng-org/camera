@@ -8,7 +8,10 @@ class Horizon{
     #ref_setter;
     #rotation_transform;
     #needle;
+    #needle_group;
+    #needle_ticks = [];
     #refline;
+    #refline_group;
     #cx;
     #cy;
     static #match_tolerance = 1;
@@ -64,72 +67,54 @@ class Horizon{
         let cy = this.#cy;
         let r = Math.min(box.width, box.height) * 0.4;
 
-        let defs = document.createElementNS(ns,"defs");
-        let filter = document.createElementNS(ns,"filter");
-        filter.setAttribute("id","glow");
-        filter.setAttribute("filterUnits","userSpaceOnUse");
-        filter.setAttribute("x", box.x - box.width*0.2);
-        filter.setAttribute("y", box.y - box.height*0.2);
-        filter.setAttribute("width", box.width*1.4);
-        filter.setAttribute("height", box.height*1.4);
+        let tick_offsets = [-4, -7, -10];
+        let tick_fracs = [0.8, 0.6, 0.4];
 
-        let blur = document.createElementNS(ns,"feGaussianBlur");
-        blur.setAttribute("in","SourceAlpha");
-        blur.setAttribute("stdDeviation","2");
-        blur.setAttribute("result","blurred_alpha");
-        filter.appendChild(blur);
+        function build_line_with_ticks(stroke, dashed){
+            let group = document.createElementNS(ns,"g");
 
-        let flood = document.createElementNS(ns,"feFlood");
-        flood.setAttribute("flood-color","#00e5ff");
-        flood.setAttribute("result","glow_color");
-        filter.appendChild(flood);
+            let main = document.createElementNS(ns,"line");
+            main.setAttribute("x1",cx - r);
+            main.setAttribute("y1",cy);
+            main.setAttribute("x2",cx + r);
+            main.setAttribute("y2",cy);
+            main.setAttribute("stroke",stroke);
+            main.setAttribute("stroke-width","2");
+            if(dashed){
+                main.setAttribute("stroke-dasharray","4 3");
+            }
+            group.appendChild(main);
 
-        let composite = document.createElementNS(ns,"feComposite");
-        composite.setAttribute("in","glow_color");
-        composite.setAttribute("in2","blurred_alpha");
-        composite.setAttribute("operator","in");
-        composite.setAttribute("result","colored_glow");
-        filter.appendChild(composite);
+            let ticks = [];
+            for(let i = 0; i < tick_offsets.length; i++){
+                let half = r * tick_fracs[i];
+                let y = cy + tick_offsets[i];
+                let tick = document.createElementNS(ns,"line");
+                tick.setAttribute("x1", cx - half);
+                tick.setAttribute("y1", y);
+                tick.setAttribute("x2", cx + half);
+                tick.setAttribute("y2", y);
+                tick.setAttribute("stroke", stroke);
+                tick.setAttribute("stroke-width","1.5");
+                tick.setAttribute("stroke-opacity", 0.55 - i*0.15);
+                group.appendChild(tick);
+                ticks.push(tick);
+            }
+            
+            return { group, main, ticks };
+        }
+        
+        let refline_parts = build_line_with_ticks("yellow", true);
+        this.#refline_group = refline_parts.group;
+        this.#refline = refline_parts.main;
+        this.#refline_group.style.display = "none";
+        this.#svg.appendChild(this.#refline_group);
 
-        let offset = document.createElementNS(ns,"feOffset");
-        offset.setAttribute("in","colored_glow");
-        offset.setAttribute("dx","0");
-        offset.setAttribute("dy","-1.5");
-        offset.setAttribute("result","glow_offset");
-        filter.appendChild(offset);
-
-        let merge = document.createElementNS(ns,"feMerge");
-        let mergeNode1 = document.createElementNS(ns,"feMergeNode");
-        mergeNode1.setAttribute("in","glow_offset");
-        let mergeNode2 = document.createElementNS(ns,"feMergeNode");
-        mergeNode2.setAttribute("in","SourceGraphic");
-        merge.appendChild(mergeNode1);
-        merge.appendChild(mergeNode2);
-        filter.appendChild(merge);
-
-        defs.appendChild(filter);
-        this.#svg.appendChild(defs);
-
-        this.#refline = document.createElementNS(ns,"line");
-        this.#refline.setAttribute("x1",cx - r);
-        this.#refline.setAttribute("y1",cy);
-        this.#refline.setAttribute("x2",cx + r);
-        this.#refline.setAttribute("y2",cy);
-        this.#refline.setAttribute("stroke","yellow");
-        this.#refline.setAttribute("stroke-dasharray","4 3");
-        this.#refline.setAttribute("filter","url(#glow)");
-        this.#refline.style.display = "none";
-        this.#svg.appendChild(this.#refline);
-
-        this.#needle = document.createElementNS(ns,"line");
-        this.#needle.setAttribute("x1",cx - r);
-        this.#needle.setAttribute("y1",cy);
-        this.#needle.setAttribute("x2",cx + r);
-        this.#needle.setAttribute("y2",cy);
-        this.#needle.setAttribute("stroke","white");
-        this.#needle.setAttribute("stroke-width","2");
-        this.#needle.setAttribute("filter","url(#glow)");
-        this.#svg.appendChild(this.#needle);
+        let needle_parts = build_line_with_ticks("white", false);
+        this.#needle_group = needle_parts.group;
+        this.#needle = needle_parts.main;
+        this.#needle_ticks = needle_parts.ticks;
+        this.#svg.appendChild(this.#needle_group);
 
         let dot = document.createElementNS(ns,"circle");
         dot.setAttribute("cx",cx);
@@ -140,39 +125,44 @@ class Horizon{
     }
     
     #svg_update(angle,ref_angle){
-         let cx = this.#cx;
-         let cy = this.#cy;
-        
-         if(angle === null){
-             this.#prepared_to_show = false;
-             return;
-         }
-         this.#prepared_to_show = true;
+        let cx = this.#cx;
+        let cy = this.#cy;
 
-         this.#needle.setAttribute(
-              "transform",
-            `rotate(${-angle} ${cx} ${cy})`
-         );
-
-         if(ref_angle === null){
-             this.#refline.style.display = "none";
-             this.#needle.setAttribute("stroke","white");
-             return;
+        if(angle === null){
+            this.#prepared_to_show = false;
+            return;
         }
+        this.#prepared_to_show = true;
 
-        this.#refline.style.display = "";
-        this.#refline.setAttribute(
+        this.#needle_group.setAttribute(
+            "transform",
+            `rotate(${-angle} ${cx} ${cy})`
+        );
+
+        if(ref_angle === null){
+            this.#refline_group.style.display = "none";
+            this.#set_needle_color("white");
+            return;
+        }
+        
+        this.#refline_group.style.display = "";
+        this.#refline_group.setAttribute(
             "transform",
             `rotate(${-ref_angle} ${cx} ${cy})`
         );
-
+        
         let T = Math.abs(angle - ref_angle);
-
+        
         if(T <= Horizon.#match_tolerance){
-            this.#needle.setAttribute("stroke","#00e676");
+            this.#set_needle_color("#00e676");
         }else{
-            this.#needle.setAttribute("stroke","white");
+            this.#set_needle_color("white");
         }
+    }
+    
+    #set_needle_color(color){
+        this.#needle.setAttribute("stroke", color);
+        this.#needle_ticks.forEach((t) => t.setAttribute("stroke", color));
     }
 
     constructor(svg){
