@@ -241,13 +241,14 @@ class Horizon{
                break;
            case 90:
                this.#rotation_transform = ({beta,gamma}) => {
-                   if(gamma !== null && beta !== null && gamma === 0 && (180 - Math.abs(beta)) < (Math.abs(beta) - 0)){
-                       gamma = 180;
-                   }else{
-                       //pass
-                   }
-                   if(gamma !== null && beta !== null && -90 <= gamma && gamma <= 90){
-                       return -gamma + (gamma <= 0 ? 0 : 180);
+                   if(gamma !== null && beta !== null &&
+                      (Math.abs(beta) - 0) <= (180 - Math.abs(beta)) &&
+                      -90 <= gamma && gamma <= 0){
+                       return -gamma;
+                   }else if(gamma !== null && beta !== null &&
+                      (180 - Math.abs(beta)) < (Math.abs(beta) - 0) &&
+                      0 <= gamma && gamma <= 90){
+                       return 180 - gamma;
                    }else{
                        return null;
                    }
@@ -255,13 +256,14 @@ class Horizon{
                break;
            case 270:
                this.#rotation_transform = ({beta,gamma}) => {
-                   if(gamma !== null && beta !== null && gamma === 0 && (180 - Math.abs(beta)) < (Math.abs(beta) - 0)){
-                       gamma = 180;
-                   }else{
-                       //pass
-                   }
-                   if(gamma !== null && beta !== null && -90 <= gamma && gamma <= 90){
-                       return gamma + (0 <= gamma ? 0 : 180);
+                   if(gamma !== null && beta !== null &&
+                      (Math.abs(beta) - 0) <= (180 - Math.abs(beta)) &&
+                      0 <= gamma && gamma <= 90){
+                       return gamma;
+                   }else if(gamma !== null && beta !== null &&
+                      (180 - Math.abs(beta)) < (Math.abs(beta) - 0) &&
+                      -90 <= gamma && gamma <= 0){
+                       return 180 + gamma;
                    }else{
                        return null;
                    }
