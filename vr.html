@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>SBS VR Capture</title>
+<title>VR SBS Capture & Viewer</title>
 <style>
     html,body{
         margin:0;
@@ -16,21 +16,45 @@
         -webkit-user-select:none;
         user-select:none;
     }
-    #video{
+    .screen{
         position:fixed;
-        top:0;
-        left:0;
-        width:1px;
-        height:1px;
-        opacity:0;
-        pointer-events:none;
+        top:0; left:0;
+        width:100vw; height:100vh;
+        display:none;
     }
-    #viewport{
-        position:fixed;
-        top:0;
-        left:0;
+    .screen.active{
+        display:block;
+    }
+    #screen_start{
+        display:flex;
+        flex-direction:column;
+        align-items:center;
+        justify-content:center;
+        gap:16px;
+        color:#eee;
+        font-family:monospace;
+    }
+    #screen_start.active{
+        display:flex;
+    }
+    #screen_start button{
+        padding:18px 24px;
+        font-size:1.1rem;
+        width:80vw;
+        max-width:400px;
+    }
+    #preview_canvas{
         width:100vw;
         height:100vh;
+        object-fit:contain;
+        background:#000;
+    }
+    #viewport{
+        width:100vw;
+        height:100vh;
+        display:flex;
+    }
+    #viewport.active{
         display:flex;
     }
     #canvas_left,#canvas_right{
@@ -41,17 +65,15 @@
     }
     #label{
         position:fixed;
-        top:0;
-        left:0;
-        width:100vw;
-        height:100vh;
+        top:0; left:0;
+        width:100vw; height:100vh;
         display:flex;
         align-items:center;
         justify-content:center;
         color:#0f0;
         font-family:monospace;
         font-weight:bold;
-        font-size:6vw;
+        font-size:5vw;
         text-align:center;
         pointer-events:none;
         z-index:5;
@@ -60,8 +82,7 @@
     }
     #corner{
         position:fixed;
-        bottom:1vh;
-        left:1vw;
+        bottom:1vh; left:1vw;
         color:#0f0;
         font-family:monospace;
         font-size:2vh;
@@ -70,82 +91,534 @@
         text-shadow: 0 0 6px #000;
         white-space:pre-line;
     }
-    #hotspot{
+    #file_input_wrap{
         position:fixed;
-        right:0;
-        bottom:0;
-        width:25vw;
-        height:25vh;
-        z-index:6;
-        background:rgba(0,255,0,0.08);
-        border-top:2px solid rgba(0,255,0,0.5);
-        border-left:2px solid rgba(0,255,0,0.5);
+        top:0; left:0;
+        width:100vw; height:100vh;
+        display:flex;
+        flex-direction:column;
+        align-items:center;
+        justify-content:center;
+        background:#000;
+        z-index:20;
+        color:#eee;
+        font-family:monospace;
+        gap:16px;
+    }
+    #file_input_wrap input{
+        font-size:1rem;
     }
 </style>
 </head>
 <body>
 
-<video id="video" autoplay muted playsinline></video>
-
-<div id="viewport">
-    <canvas id="canvas_left"></canvas>
-    <canvas id="canvas_right"></canvas>
+<div id="screen_start" class="screen active">
+    <button id="btn_capture">拍摄 (红蓝预览) 并保存</button>
+    <button id="btn_view">读取本地照片 并渲染VR</button>
 </div>
 
-<div id="label">点击开始</div>
+<div id="screen_capture" class="screen">
+    <canvas id="preview_canvas"></canvas>
+</div>
+
+<div id="screen_view" class="screen">
+    <div id="viewport">
+        <canvas id="canvas_left"></canvas>
+        <canvas id="canvas_right"></canvas>
+    </div>
+</div>
+
+<div id="label"></div>
 <div id="corner"></div>
-<div id="hotspot"></div>
+
+<div id="file_input_wrap" style="display:none">
+    <div>选择一张已保存的 SBS 照片</div>
+    <input type="file" id="file_input" accept="image/*">
+</div>
+
+<video id="video" style="display:none" autoplay muted playsinline></video>
 
 <script>
-const SWEEP_HALF_PERIOD_MS = 3000;
-const LONG_PRESS_MS = 600;
-const TAP_MOVE_TOLERANCE_PX = 12; // if finger moves more than this before release, treat as drag not tap
+/* ===================== inlined gpu.js (optimized) ===================== */
 
-const STATE = {
-    START: "START",
-    CALIB_LEFT: "CALIB_LEFT",
-    CALIB_RIGHT: "CALIB_RIGHT",
-    CAP_LEFT: "CAP_LEFT",
-    CAP_RIGHT: "CAP_RIGHT",
-    SHOW: "SHOW"
-};
+class gpu{
+    static of(target_canvas,width,height){
+        return webgpu.of(target_canvas,width,height)
+                     .catch( __ => webgl2.of(target_canvas,width,height) );
+    }
 
-let state = STATE.START;
+    static color_zero_mat = gpu.color_mat(
+        gpu.new_color(0,0,0,0), gpu.new_color(0,0,0,0),
+        gpu.new_color(0,0,0,0), gpu.new_color(0,0,0,0)
+    );
 
-const video = document.getElementById("video");
+    static color_id_mat = gpu.color_mat(
+        gpu.new_color(1,0,0,0), gpu.new_color(0,1,0,0),
+        gpu.new_color(0,0,1,0), gpu.new_color(0,0,0,1)
+    );
+
+    static new_color(r,g,b,a){
+        return new Float32Array([r,g,b,a]);
+    }
+
+    static color_mat(nr,ng,nb,na){
+        if([nr,ng,nb,na].every((t) => typeof(t)==="object" && t.constructor===Float32Array.prototype.constructor && t.length===4)){
+            return new Float32Array([
+                nr[0],ng[0],nb[0],na[0],
+                nr[1],ng[1],nb[1],na[1],
+                nr[2],ng[2],nb[2],na[2],
+                nr[3],ng[3],nb[3],na[3]
+            ]);
+        }else{
+            return null;
+        }
+    }
+}
+
+class dubois{
+    static #left_mat = gpu.color_mat(
+        gpu.new_color(0.4561000,0.5004840,0.1763810,0.0),
+        gpu.new_color(-0.0400822,-0.0378246,-0.0157589,0.0),
+        gpu.new_color(-0.0152161,-0.0205971,-0.00546856,0.0),
+        gpu.new_color(0.0,0.0,0.0,1.0)
+    );
+    static #right_mat = gpu.color_mat(
+        gpu.new_color(-0.0434062,-0.0879330,-0.0015552,0.0),
+        gpu.new_color(0.3784760,0.7336400,-0.0184503,0.0),
+        gpu.new_color(-0.0721527,-0.2125920,1.1331900,0.0),
+        gpu.new_color(0.0,0.0,0.0,1.0)
+    );
+    static anaglyph(gpu_interface){
+        return (left,right) => gpu_interface(left,dubois.#left_mat,right,dubois.#right_mat);
+    }
+}
+
+class direct{
+    static draw(gpu_interface){
+        return (image) => gpu_interface(image);
+    }
+}
+
+class webgpu{
+    static #format = "rgba16float";
+
+    static #ushader(device){
+        let src_code = `\
+@vertex
+fn vertex(@builtin(vertex_index) index: u32) -> @builtin(position) vec4<f32>{
+    return vec4<f32>((f32(index)-1.0)*3.0, select(1.0,-3.0,index==1u), 0.0, 1.0);
+}
+@group(0) @binding(0) var tex_a: texture_2d<f32>;
+@group(0) @binding(1) var<uniform> mat_a: mat4x4<f32>;
+@group(0) @binding(2) var tex_b: texture_2d<f32>;
+@group(0) @binding(3) var<uniform> mat_b: mat4x4<f32>;
+@fragment
+fn fragment(@builtin(position) P: vec4<f32>) -> @location(0) vec4<f32> {
+    return encode(reduce(color(P,mat_a,tex_a), color(P,mat_b,tex_b)));
+}
+fn decode(s: vec4<f32>) -> vec4<f32> {
+    return select(pow(((s+0.055)/1.055), vec4<f32>(2.4)), s/12.92, s<=vec4<f32>(0.04045));
+}
+fn encode(s: vec4<f32>) -> vec4<f32> {
+    return select(1.055*pow(s, vec4<f32>(1.0/2.4))-0.055, 12.92*s, s<=vec4<f32>(0.0031308));
+}
+fn color(P: vec4<f32>, color_mat: mat4x4<f32>, src_tex: texture_2d<f32>) -> vec4<f32> {
+    return color_mat * decode(textureLoad(src_tex, vec2<i32>(P.xy), 0));
+}
+fn reduce(a: vec4<f32>, b: vec4<f32>) -> vec4<f32> { return a + b; }`;
+        let shader = device.createShaderModule({label:"ushader", code:src_code});
+        shader.getCompilationInfo().then((info) => [...info.messages].map(console.error));
+        return shader;
+    }
+
+    static #pipeline(device,target_canvas,width,height){
+        let shader = webgpu.#ushader(device);
+        return device.createRenderPipelineAsync({
+            layout:"auto",
+            vertex:{ module:shader, entryPoint:"vertex" },
+            fragment:{ module:shader, entryPoint:"fragment", targets:[{format:webgpu.#format}] }
+        }).then((pipeline) => {
+            let type = pipeline.getBindGroupLayout(0);
+            let group_0 = webgpu.#bind_group(device,type,width,height);
+            let group_1 = webgpu.#bind_group(device,type,height,width);
+            let group = (a,ma,b,mb) => group_0(a,ma,b,mb) ?? group_1(a,ma,b,mb) ?? null;
+
+            let context = target_canvas.getContext("webgpu");
+            if(context === null){ throw new Error("webgpu is not supported! "); }
+
+            context.configure({
+                device:device, format:webgpu.#format, colorSpace:"display-p3",
+                alphaMode:"opaque", toneMapping:{mode:"extended"},
+                usage: GPUTextureUsage.COPY_SRC | GPUTextureUsage.COPY_DST | GPUTextureUsage.RENDER_ATTACHMENT
+            });
+
+            return (a, ma=gpu.color_id_mat, b=a, mb=gpu.color_zero_mat) => {
+                let env = group(a,ma,b,mb);
+                if(env === null){
+                    console.error("gpu>> Cannot render, you might have two images of different sizes");
+                }else{
+                    target_canvas.width = a.width;
+                    target_canvas.height = a.height;
+                    let mapper = device.createCommandEncoder();
+                    let mapping = mapper.beginRenderPass({
+                        colorAttachments:[{
+                            view: context.getCurrentTexture().createView(),
+                            clearValue:{r:0,g:0,b:0,a:1}, loadOp:"clear", storeOp:"store"
+                        }]
+                    });
+                    mapping.setPipeline(pipeline);
+                    mapping.setBindGroup(0,env);
+                    mapping.draw(3);
+                    mapping.end();
+                    device.queue.submit([mapper.finish()]);
+                }
+            };
+        });
+    }
+
+    static #bind_group(device,type,width,height){
+        if([width,height].every(Number.isInteger)){
+            let tex_a = device.createTexture({size:[width,height,1], format:webgpu.#format,
+                usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST | GPUTextureUsage.RENDER_ATTACHMENT});
+            let mat_a = device.createBuffer({size:new Float32Array(16).byteLength,
+                usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST});
+            let tex_b = device.createTexture({size:[width,height,1], format:webgpu.#format,
+                usage: GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_DST | GPUTextureUsage.RENDER_ATTACHMENT});
+            let mat_b = device.createBuffer({size:new Float32Array(16).byteLength,
+                usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST});
+            let bind_group = device.createBindGroup({layout:type, entries:[
+                {binding:0, resource:tex_a.createView()},
+                {binding:1, resource:mat_a},
+                {binding:2, resource:tex_b.createView()},
+                {binding:3, resource:mat_b}
+            ]});
+
+            return (a, ma=gpu.color_id_mat, b=a, mb=gpu.color_zero_mat) => {
+                if(
+                    [a,b].every((t) => t instanceof ImageBitmap && t.width===width && t.height===height) &&
+                    [ma,mb].every((m) => m instanceof Float32Array && m.length===16)
+                ){
+                    device.queue.copyExternalImageToTexture({source:a},{texture:tex_a},[width,height]);
+                    device.queue.copyExternalImageToTexture({source:b},{texture:tex_b},[width,height]);
+                    device.queue.writeBuffer(mat_a,0,ma);
+                    device.queue.writeBuffer(mat_b,0,mb);
+                    return bind_group;
+                }else{
+                    console.error("gpu::#bind_group:: Typed Error");
+                    return null;
+                }
+            };
+        }else{
+            throw Error("gpu::#bind_group(width,height)>> width and height must be int");
+        }
+    }
+
+    static of(target_canvas,width,height){
+        return navigator.gpu.requestAdapter()
+            .then((adapter) => adapter.requestDevice())
+            .then((device) => webgpu.#pipeline(device,target_canvas,width,height));
+    }
+}
+
+class webgl2{
+    static #vertex_src = `#version 300 es
+void main(){
+    float x = (float(gl_VertexID) - 1.0) * 3.0;
+    float y = (gl_VertexID == 1) ? -3.0 : 1.0;
+    gl_Position = vec4(x, y, 0.0, 1.0);
+}`;
+
+    static #fragment_src = `#version 300 es
+precision highp float;
+uniform sampler2D tex_a;
+uniform mat4 mat_a;
+uniform sampler2D tex_b;
+uniform mat4 mat_b;
+out vec4 out_color;
+vec4 decode(vec4 s){
+    return mix(pow((s+0.055)/1.055, vec4(2.4)), s/12.92, lessThanEqual(s, vec4(0.04045)));
+}
+vec4 encode(vec4 s){
+    return mix(1.055*pow(s, vec4(1.0/2.4)) - 0.055, 12.92*s, lessThanEqual(s, vec4(0.0031308)));
+}
+vec4 color(mat4 color_mat, sampler2D src_tex){
+    ivec2 tex_size = textureSize(src_tex,0);
+    float Y = float(tex_size.y);
+    ivec2 coord = ivec2(gl_FragCoord.x, Y - 0.5 - gl_FragCoord.y);
+    return color_mat * decode(texelFetch(src_tex, coord, 0));
+}
+vec4 reduce(vec4 a, vec4 b){ return a + b; }
+void main(){
+    out_color = encode(reduce(color(mat_a, tex_a), color(mat_b, tex_b)));
+}`;
+
+    static #compile(gl,type,src){
+        let shader = gl.createShader(type);
+        gl.shaderSource(shader,src);
+        gl.compileShader(shader);
+        if(!gl.getShaderParameter(shader,gl.COMPILE_STATUS)){
+            console.error(gl.getShaderInfoLog(shader));
+        }
+        return shader;
+    }
+
+    static #program(gl){
+        let vertex = webgl2.#compile(gl,gl.VERTEX_SHADER,webgl2.#vertex_src);
+        let fragment = webgl2.#compile(gl,gl.FRAGMENT_SHADER,webgl2.#fragment_src);
+        let program = gl.createProgram();
+        gl.attachShader(program,vertex);
+        gl.attachShader(program,fragment);
+        gl.linkProgram(program);
+        if(!gl.getProgramParameter(program,gl.LINK_STATUS)){
+            console.error(gl.getProgramInfoLog(program));
+        }
+        return program;
+    }
+
+    static #texture(gl,width,height){
+        let tex = gl.createTexture();
+        gl.bindTexture(gl.TEXTURE_2D,tex);
+        gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.NEAREST);
+        gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.NEAREST);
+        gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);
+        gl.texStorage2D(gl.TEXTURE_2D,1,gl.RGBA16F,width,height);
+        return tex;
+    }
+
+    static #upload(gl,tex,image_bit_map){
+        gl.bindTexture(gl.TEXTURE_2D,tex);
+        gl.texSubImage2D(gl.TEXTURE_2D,0,0,0,image_bit_map.width,image_bit_map.height,gl.RGBA,gl.HALF_FLOAT,image_bit_map);
+    }
+
+    static #configure_color_space(gl){
+        if("drawingBufferColorSpace" in gl){
+            try{ gl.drawingBufferColorSpace = "display-p3"; }catch(err){ /*PASS*/ }
+        }
+    }
+
+    static #pipeline(gl,target_canvas,width,height){
+        webgl2.#configure_color_space(gl);
+        let program = webgl2.#program(gl);
+
+        let tex_a_0 = webgl2.#texture(gl,width,height);
+        let tex_b_0 = webgl2.#texture(gl,width,height);
+        let tex_a_1 = webgl2.#texture(gl,height,width);
+        let tex_b_1 = webgl2.#texture(gl,height,width);
+
+        let vao = gl.createVertexArray();
+        let loc_tex_a = gl.getUniformLocation(program,"tex_a");
+        let loc_mat_a = gl.getUniformLocation(program,"mat_a");
+        let loc_tex_b = gl.getUniformLocation(program,"tex_b");
+        let loc_mat_b = gl.getUniformLocation(program,"mat_b");
+
+        gl.useProgram(program);
+        gl.bindVertexArray(vao);
+        gl.uniform1i(loc_tex_a,0);
+        gl.uniform1i(loc_tex_b,1);
+
+        let same_size = (a,b) => [a,b].every((t) => t instanceof ImageBitmap && t.width===a.width && t.height===a.height);
+
+        let pick_pair = (w,h) => {
+            if(w===width && h===height){ return [tex_a_0,tex_b_0]; }
+            else if(w===height && h===width){ return [tex_a_1,tex_b_1]; }
+            else{ return null; }
+        };
+
+        return (a, ma=gpu.color_id_mat, b=a, mb=gpu.color_zero_mat) => {
+            if(!same_size(a,b) || ![ma,mb].every((m) => m instanceof Float32Array && m.length===16)){
+                console.error("gpu>> Cannot render, you might have two images of different sizes");
+                return;
+            }
+            let pair = pick_pair(a.width,a.height);
+            if(pair === null){
+                console.error("gpu>> Cannot render, image size does not match either orientation");
+                return;
+            }
+            let [tex_a,tex_b] = pair;
+
+            target_canvas.width = a.width;
+            target_canvas.height = a.height;
+            gl.viewport(0,0,target_canvas.width,target_canvas.height);
+
+            webgl2.#upload(gl,tex_a,a);
+            webgl2.#upload(gl,tex_b,b);
+
+            gl.activeTexture(gl.TEXTURE0);
+            gl.bindTexture(gl.TEXTURE_2D,tex_a);
+            gl.uniformMatrix4fv(loc_mat_a,false,ma);
+
+            gl.activeTexture(gl.TEXTURE1);
+            gl.bindTexture(gl.TEXTURE_2D,tex_b);
+            gl.uniformMatrix4fv(loc_mat_b,false,mb);
+
+            gl.drawArrays(gl.TRIANGLES,0,3);
+        };
+    }
+
+    static of(target_canvas,width,height){
+        let gl = target_canvas.getContext("webgl2",{
+            colorSpace:"display-p3", alpha:false, powerPreference:"high-performance", preserveDrawingBuffer:true
+        });
+        if(gl === null){ return Promise.reject(new Error("webgl2 is not supported! ")); }
+        return Promise.resolve(webgl2.#pipeline(gl,target_canvas,width,height));
+    }
+}
+
+/* ===================== app logic ===================== */
+
 const label = document.getElementById("label");
 const corner = document.getElementById("corner");
-const hotspot = document.getElementById("hotspot");
-const canvasLeft = document.getElementById("canvas_left");
-const canvasRight = document.getElementById("canvas_right");
-const ctxLeft = canvasLeft.getContext("2d");
-const ctxRight = canvasRight.getContext("2d");
+const video = document.getElementById("video");
 
-let left_offset = 0;   // css px, calibrated eye centers
+function set_label(t){ label.innerText = t; }
+function set_corner(t){ corner.innerText = t; }
+
+function show_screen(id){
+    document.querySelectorAll(".screen").forEach((el) => el.classList.remove("active"));
+    document.getElementById(id).classList.add("active");
+}
+
+/* ---------- Mode A: capture with live anaglyph preview, save as SBS ---------- */
+
+let cap_running = false;
+let cap_left_img = null;   // ImageBitmap, frozen
+let cap_render = null;     // gpu render function
+let cap_imgc = null;       // ImageCapture
+
+async function start_capture_mode(){
+    show_screen("screen_capture");
+    set_label("准备摄像头...");
+
+    try{ await document.documentElement.requestFullscreen(); }catch(err){ /*PASS*/ }
+    try{ await screen.orientation.lock("landscape"); }catch(err){ /*PASS*/ }
+
+    let stream = await navigator.mediaDevices.getUserMedia({
+        audio:false,
+        video:{
+            facingMode:{ exact:"environment" },
+            width:{ ideal:1920 },
+            height:{ ideal:1080 }
+        }
+    });
+    let track = stream.getVideoTracks()[0];
+    cap_imgc = new ImageCapture(track);
+
+    let canvas = document.getElementById("preview_canvas");
+    let settings = track.getSettings();
+    let w = settings.width || 1920;
+    let h = settings.height || 1080;
+
+    cap_render = await gpu.of(canvas, w, h);
+    cap_left_img = null;
+    cap_running = true;
+    set_label("轻点屏幕\n拍摄左图");
+    set_corner("");
+    requestAnimationFrame(capture_preview_loop);
+}
+
+function capture_preview_loop(){
+    if(!cap_running) return;
+    cap_imgc.grabFrame().then((img) => {
+        if(cap_left_img === null){
+            direct.draw(cap_render)(img);
+            img.close();
+        }else{
+            dubois.anaglyph(cap_render)(cap_left_img, img);
+            img.close();
+        }
+        if(cap_running){
+            requestAnimationFrame(capture_preview_loop);
+        }
+    }).catch((err) => {
+        console.error(err);
+        if(cap_running){ requestAnimationFrame(capture_preview_loop); }
+    });
+}
+
+function on_capture_tap(){
+    if(!cap_running) return;
+
+    cap_imgc.grabFrame().then((img) => {
+        if(cap_left_img === null){
+            cap_left_img = img;
+            set_label("轻点屏幕\n拍摄右图 (可看到红蓝合成预览)");
+        }else{
+            let right_img = img;
+            cap_running = false;
+            finish_capture(cap_left_img, right_img);
+        }
+    }).catch((err) => {
+        set_label("抓取画面出错:\n" + err.message);
+    });
+}
+
+function build_sbs_canvas(left, right){
+    let w = left.width, h = left.height;
+    let out = document.createElement("canvas");
+    out.width = w * 2;
+    out.height = h;
+    let ctx = out.getContext("2d");
+    ctx.drawImage(left, 0, 0);
+    ctx.drawImage(right, w, 0);
+    return out;
+}
+
+function finish_capture(left_img, right_img){
+    set_label("正在保存...");
+    let sbs = build_sbs_canvas(left_img, right_img);
+    left_img.close();
+    right_img.close();
+
+    sbs.toBlob((blob) => {
+        if(blob === null){
+            set_label("保存失败,点击重试");
+            cap_left_img = null;
+            cap_running = true;
+            requestAnimationFrame(capture_preview_loop);
+            return;
+        }
+        let name = `SBS_3D_[${Date.now()}].jpg`;
+        let url = URL.createObjectURL(blob);
+        let a = document.createElement("a");
+        a.href = url; a.download = name;
+        a.click();
+        URL.revokeObjectURL(url);
+
+        set_label("已保存\n点击拍下一组");
+        cap_left_img = null;
+        cap_running = true;
+        requestAnimationFrame(capture_preview_loop);
+    }, "image/jpeg", 0.92);
+}
+
+/* ---------- Mode B: load local SBS photo, split, calibrate, render ---------- */
+
+const SWEEP_HALF_PERIOD_MS = 3000;
+const LONG_PRESS_MS = 600;
+
+const VSTATE = {
+    CALIB_LEFT: "CALIB_LEFT",
+    CALIB_RIGHT: "CALIB_RIGHT",
+    RENDER: "RENDER"
+};
+
+let vstate = null;
+let left_offset = 0;
 let right_offset = 0;
-let left_img = null;
-let right_img = null;
+let view_left_img = null;
+let view_right_img = null;
 
 let sweeping = false;
 let sweep_start_time = 0;
 let sweep_last_x = 0;
 
-let live_preview_running = false;
-let debug_frame_count = 0;
+const canvasLeft = document.getElementById("canvas_left");
+const canvasRight = document.getElementById("canvas_right");
+const ctxLeft = canvasLeft.getContext("2d");
+const ctxRight = canvasRight.getContext("2d");
 
-// drag-to-parallax state (used only in CAP_RIGHT)
-let dragging = false;
-let drag_start_x = 0;
-let drag_delta_css = 0; // current live delta, css px
-
-function set_label(text){ label.innerText = text; }
-function set_corner(text){ corner.innerText = text; }
-
-function debug_line(){
-    return `state=${state}  L:${canvasLeft.width}x${canvasLeft.height}  R:${canvasRight.width}x${canvasRight.height}  frame:${debug_frame_count}  drag:${drag_delta_css.toFixed(0)}px`;
-}
-
-function resize_canvases(){
+function resize_view_canvases(){
     let dpr = window.devicePixelRatio || 1;
     let rectL = canvasLeft.getBoundingClientRect();
     let rectR = canvasRight.getBoundingClientRect();
@@ -155,13 +628,7 @@ function resize_canvases(){
     canvasRight.height = Math.max(1, Math.round(rectR.height * dpr));
 }
 
-function ensure_canvas_ready(){
-    if(canvasLeft.width < 2 || canvasRight.width < 2){
-        resize_canvases();
-    }
-}
-
-function clear_both(){
+function clear_view_canvases(){
     ctxLeft.clearRect(0,0,canvasLeft.width,canvasLeft.height);
     ctxRight.clearRect(0,0,canvasRight.width,canvasRight.height);
 }
@@ -174,13 +641,10 @@ function triangle_x(elapsed_ms, width){
 
 function draw_sweep_frame(){
     if(!sweeping) return;
-
     let ctx, canvas;
-    if(state === STATE.CALIB_LEFT){ ctx = ctxLeft; canvas = canvasLeft; }
-    else if(state === STATE.CALIB_RIGHT){ ctx = ctxRight; canvas = canvasRight; }
+    if(vstate === VSTATE.CALIB_LEFT){ ctx = ctxLeft; canvas = canvasLeft; }
+    else if(vstate === VSTATE.CALIB_RIGHT){ ctx = ctxRight; canvas = canvasRight; }
     else{ sweeping = false; return; }
-
-    ensure_canvas_ready();
 
     let elapsed = performance.now() - sweep_start_time;
     let x = triangle_x(elapsed, canvas.width);
@@ -194,200 +658,106 @@ function draw_sweep_frame(){
     ctx.lineTo(x,canvas.height);
     ctx.stroke();
 
-    debug_frame_count++;
-    set_corner(debug_line());
-
     requestAnimationFrame(draw_sweep_frame);
 }
 
 function draw_half(ctx, canvas, src, xoffset_css){
     ctx.clearRect(0,0,canvas.width,canvas.height);
     if(src === null) return;
-
     let dpr = window.devicePixelRatio || 1;
     let xoffset = xoffset_css * dpr;
-    let sw = src.videoWidth || src.width;
-    let sh = src.videoHeight || src.height;
-    if(!sw || !sh) return;
-
+    let sw = src.width, sh = src.height;
     let scale = Math.max(canvas.width / sw, canvas.height / sh);
-    let dw = sw * scale;
-    let dh = sh * scale;
+    let dw = sw * scale, dh = sh * scale;
     let dx = (canvas.width - dw) / 2 + xoffset;
     let dy = (canvas.height - dh) / 2;
     ctx.drawImage(src, 0, 0, sw, sh, dx, dy, dw, dh);
 }
 
-function grab_frame_to_canvas(){
-    let c = document.createElement("canvas");
-    c.width = video.videoWidth;
-    c.height = video.videoHeight;
-    c.getContext("2d").drawImage(video,0,0,c.width,c.height);
-    return c;
+function split_sbs_image(img){
+    let half_w = img.width / 2;
+    let h = img.height;
+
+    let left = document.createElement("canvas");
+    left.width = half_w; left.height = h;
+    left.getContext("2d").drawImage(img, 0, 0, half_w, h, 0, 0, half_w, h);
+
+    let right = document.createElement("canvas");
+    right.width = half_w; right.height = h;
+    right.getContext("2d").drawImage(img, half_w, 0, half_w, h, 0, 0, half_w, h);
+
+    return { left, right };
 }
 
-function live_preview_loop(){
-    if(!live_preview_running) return;
-
-    ensure_canvas_ready();
-
-    if(state === STATE.CAP_LEFT){
-        draw_half(ctxLeft, canvasLeft, video, left_offset);
-        ctxRight.clearRect(0,0,canvasRight.width,canvasRight.height);
-    }else if(state === STATE.CAP_RIGHT){
-        // both eyes' offsets shift together by the live drag delta,
-        // since the phone is rigid and the anchor point (finger) is fixed in world space
-        draw_half(ctxLeft, canvasLeft, left_img, left_offset + drag_delta_css);
-        draw_half(ctxRight, canvasRight, video, right_offset + drag_delta_css);
-    }else{
-        live_preview_running = false;
-        return;
-    }
-
-    debug_frame_count++;
-    set_corner(debug_line());
-
-    requestAnimationFrame(live_preview_loop);
+function enter_calib_left(){
+    vstate = VSTATE.CALIB_LEFT;
+    clear_view_canvases();
+    set_label("看左眼画面\n按住不放,看到线最长时松手");
+    set_corner("");
 }
 
-async function setup_display_then_camera(){
+function enter_calib_right(){
+    vstate = VSTATE.CALIB_RIGHT;
+    clear_view_canvases();
+    set_label("看右眼画面\n按住不放,看到线最长时松手");
+}
+
+function enter_render(){
+    vstate = VSTATE.RENDER;
+    set_label("");
+    resize_view_canvases();
+    draw_half(ctxLeft, canvasLeft, view_left_img, left_offset);
+    draw_half(ctxRight, canvasRight, view_right_img, right_offset);
+    set_corner(`完成  L偏移:${left_offset.toFixed(0)}px R偏移:${right_offset.toFixed(0)}px  (长按重新校准)`);
+}
+
+async function start_view_mode(){
+    show_screen("screen_view");
     try{ await document.documentElement.requestFullscreen(); }catch(err){ /*PASS*/ }
     try{ await screen.orientation.lock("landscape"); }catch(err){ /*PASS*/ }
 
     await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
-    resize_canvases();
+    resize_view_canvases();
 
-    let stream = await navigator.mediaDevices.getUserMedia({
-        audio:false,
-        video:{
-            facingMode:{ exact:"environment" },
-            width:{ ideal:1920 },
-            height:{ ideal:1080 }
-        }
-    });
-    video.srcObject = stream;
-    await new Promise((resolve) => {
-        video.addEventListener("loadedmetadata", resolve, { once:true });
-    });
-    await video.play();
-
-    resize_canvases();
+    document.getElementById("file_input_wrap").style.display = "flex";
 }
 
-function enter_start(){
-    state = STATE.START;
-    clear_both();
-    set_label("点击开始\n(将横屏并请求摄像头)");
-    set_corner("");
-}
-
-function enter_calib_left(){
-    state = STATE.CALIB_LEFT;
-    clear_both();
-    ensure_canvas_ready();
-    set_label("看左眼画面\n按住不放,看到线最长时松手");
-}
-
-function enter_calib_right(){
-    state = STATE.CALIB_RIGHT;
-    clear_both();
-    ensure_canvas_ready();
-    set_label("看右眼画面\n按住不放,看到线最长时松手");
-}
-
-function enter_cap_left(){
-    state = STATE.CAP_LEFT;
-    set_label("轻点右下角\n拍摄左图");
-    drag_delta_css = 0;
-    if(!live_preview_running){
-        live_preview_running = true;
-        requestAnimationFrame(live_preview_loop);
-    }
-}
-
-function enter_cap_right(){
-    state = STATE.CAP_RIGHT;
-    drag_delta_css = 0;
-    set_label("按住右下角滑动手机\n制造视差,满意后松手拍右图");
-}
-
-function enter_show(){
-    state = STATE.SHOW;
-    live_preview_running = false;
-    set_label("");
-    resize_canvases();
-    draw_half(ctxLeft, canvasLeft, left_img, left_offset);
-    draw_half(ctxRight, canvasRight, right_img, right_offset);
-    set_corner(`完成  L偏移:${left_offset.toFixed(0)}px R偏移:${right_offset.toFixed(0)}px  (点击重拍,长按重新校准)`);
-}
-
-function on_tap(){
-    switch(state){
-        case STATE.START:
-            set_label("准备中...");
-            setup_display_then_camera().then(enter_calib_left).catch((err) => {
-                set_label("出错了:\n" + err.message);
-            });
-            break;
-        case STATE.CAP_LEFT:
-            left_img = grab_frame_to_canvas();
-            enter_cap_right();
-            break;
-        case STATE.SHOW:
-            left_img = null;
-            right_img = null;
-            enter_cap_left();
-            break;
-    }
-}
-
-function on_long_press(){
-    if(state === STATE.SHOW){
-        live_preview_running = false;
+document.getElementById("file_input").addEventListener("change", (e) => {
+    let file = e.target.files[0];
+    if(!file) return;
+    let url = URL.createObjectURL(file);
+    let img = new Image();
+    img.onload = () => {
+        let { left, right } = split_sbs_image(img);
+        view_left_img = left;
+        view_right_img = right;
+        URL.revokeObjectURL(url);
+        document.getElementById("file_input_wrap").style.display = "none";
         enter_calib_left();
-    }
-}
+    };
+    img.src = url;
+});
+
+/* ---------- pointer handling: routes to whichever mode is active ---------- */
 
 let press_start_time = null;
-let press_start_x = 0;
-let press_moved_beyond_tolerance = false;
 
-window.addEventListener("pointerdown", (e) => {
+window.addEventListener("pointerdown", () => {
     press_start_time = performance.now();
-    press_start_x = e.clientX;
-    press_moved_beyond_tolerance = false;
 
-    if(state === STATE.CALIB_LEFT || state === STATE.CALIB_RIGHT){
-        ensure_canvas_ready();
+    if(vstate === VSTATE.CALIB_LEFT || vstate === VSTATE.CALIB_RIGHT){
         sweeping = true;
         sweep_start_time = performance.now();
         requestAnimationFrame(draw_sweep_frame);
-    }else if(state === STATE.CAP_RIGHT){
-        dragging = true;
-        drag_start_x = e.clientX;
-        drag_delta_css = 0;
     }
 });
 
-window.addEventListener("pointermove", (e) => {
-    if(state === STATE.CAP_RIGHT && dragging){
-        // finger stays anchored in world space; phone (and its screen coords)
-        // slides under it. delta is finger position minus its start position.
-        drag_delta_css = e.clientX - drag_start_x;
-    }
-    if(press_start_time !== null){
-        if(Math.abs(e.clientX - press_start_x) > TAP_MOVE_TOLERANCE_PX){
-            press_moved_beyond_tolerance = true;
-        }
-    }
-});
-
-window.addEventListener("pointerup", (e) => {
+window.addEventListener("pointerup", () => {
     if(press_start_time === null) return;
     let held = performance.now() - press_start_time;
     press_start_time = null;
 
-    if(state === STATE.CALIB_LEFT){
+    if(vstate === VSTATE.CALIB_LEFT){
         sweeping = false;
         let dpr = window.devicePixelRatio || 1;
         let measured_css = sweep_last_x / dpr;
@@ -396,58 +766,47 @@ window.addEventListener("pointerup", (e) => {
         enter_calib_right();
         return;
     }
-    if(state === STATE.CALIB_RIGHT){
+    if(vstate === VSTATE.CALIB_RIGHT){
         sweeping = false;
         let dpr = window.devicePixelRatio || 1;
         let measured_css = sweep_last_x / dpr;
         let geometric_css = canvasRight.getBoundingClientRect().width / 2;
         right_offset = measured_css - geometric_css;
-        enter_cap_left();
+        enter_render();
         return;
     }
-    if(state === STATE.CAP_RIGHT && dragging){
-        dragging = false;
-        // commit the accumulated slide into both eyes' offsets permanently
-        left_offset += drag_delta_css;
-        right_offset += drag_delta_css;
-        drag_delta_css = 0;
-        right_img = grab_frame_to_canvas();
-        enter_show();
+    if(vstate === VSTATE.RENDER && held >= LONG_PRESS_MS){
+        enter_calib_left();
         return;
     }
 
-    if(held >= LONG_PRESS_MS){
-        on_long_press();
-    }else{
-        on_tap();
+    // capture mode: any short tap on the capture screen triggers next shot
+    if(document.getElementById("screen_capture").classList.contains("active")){
+        on_capture_tap();
     }
 });
 
 window.addEventListener("pointercancel", () => {
     press_start_time = null;
     sweeping = false;
-    dragging = false;
-    drag_delta_css = 0;
 });
 
 window.addEventListener("resize", () => {
-    resize_canvases();
-    if(state === STATE.SHOW){
-        draw_half(ctxLeft, canvasLeft, left_img, left_offset);
-        draw_half(ctxRight, canvasRight, right_img, right_offset);
+    if(document.getElementById("screen_view").classList.contains("active")){
+        resize_view_canvases();
+        if(vstate === VSTATE.RENDER){
+            draw_half(ctxLeft, canvasLeft, view_left_img, left_offset);
+            draw_half(ctxRight, canvasRight, view_right_img, right_offset);
+        }
     }
 });
-window.addEventListener("orientationchange", () => {
-    setTimeout(() => {
-        resize_canvases();
-        if(state === STATE.SHOW){
-            draw_half(ctxLeft, canvasLeft, left_img, left_offset);
-            draw_half(ctxRight, canvasRight, right_img, right_offset);
-        }
-    }, 200);
-});
 
-enter_start();
+document.getElementById("btn_capture").addEventListener("click", () => {
+    start_capture_mode().catch((err) => set_label("出错了:\n" + err.message));
+});
+document.getElementById("btn_view").addEventListener("click", () => {
+    start_view_mode().catch((err) => set_label("出错了:\n" + err.message));
+});
 </script>
 </body>
 </html>
