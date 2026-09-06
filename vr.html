@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>SBS VR Calibration</title>
+<title>SBS VR Capture</title>
 <style>
     html,body{
         margin:0;
@@ -70,6 +70,17 @@
         text-shadow: 0 0 6px #000;
         white-space:pre-line;
     }
+    #hotspot{
+        position:fixed;
+        right:0;
+        bottom:0;
+        width:25vw;
+        height:25vh;
+        z-index:6;
+        background:rgba(0,255,0,0.08);
+        border-top:2px solid rgba(0,255,0,0.5);
+        border-left:2px solid rgba(0,255,0,0.5);
+    }
 </style>
 </head>
 <body>
@@ -83,10 +94,12 @@
 
 <div id="label">点击开始</div>
 <div id="corner"></div>
+<div id="hotspot"></div>
 
 <script>
 const SWEEP_HALF_PERIOD_MS = 3000;
 const LONG_PRESS_MS = 600;
+const TAP_MOVE_TOLERANCE_PX = 12; // if finger moves more than this before release, treat as drag not tap
 
 const STATE = {
     START: "START",
@@ -102,12 +115,13 @@ let state = STATE.START;
 const video = document.getElementById("video");
 const label = document.getElementById("label");
 const corner = document.getElementById("corner");
+const hotspot = document.getElementById("hotspot");
 const canvasLeft = document.getElementById("canvas_left");
 const canvasRight = document.getElementById("canvas_right");
 const ctxLeft = canvasLeft.getContext("2d");
 const ctxRight = canvasRight.getContext("2d");
 
-let left_offset = 0;
+let left_offset = 0;   // css px, calibrated eye centers
 let right_offset = 0;
 let left_img = null;
 let right_img = null;
@@ -119,16 +133,16 @@ let sweep_last_x = 0;
 let live_preview_running = false;
 let debug_frame_count = 0;
 
-function set_label(text){
-    label.innerText = text;
-}
+// drag-to-parallax state (used only in CAP_RIGHT)
+let dragging = false;
+let drag_start_x = 0;
+let drag_delta_css = 0; // current live delta, css px
 
-function set_corner(text){
-    corner.innerText = text;
-}
+function set_label(text){ label.innerText = text; }
+function set_corner(text){ corner.innerText = text; }
 
 function debug_line(){
-    return `state=${state}  L:${canvasLeft.width}x${canvasLeft.height}  R:${canvasRight.width}x${canvasRight.height}  frame:${debug_frame_count}`;
+    return `state=${state}  L:${canvasLeft.width}x${canvasLeft.height}  R:${canvasRight.width}x${canvasRight.height}  frame:${debug_frame_count}  drag:${drag_delta_css.toFixed(0)}px`;
 }
 
 function resize_canvases(){
@@ -142,7 +156,6 @@ function resize_canvases(){
 }
 
 function ensure_canvas_ready(){
-    // canvases must have non-zero backing size before we draw anything meaningful
     if(canvasLeft.width < 2 || canvasRight.width < 2){
         resize_canvases();
     }
@@ -222,8 +235,10 @@ function live_preview_loop(){
         draw_half(ctxLeft, canvasLeft, video, left_offset);
         ctxRight.clearRect(0,0,canvasRight.width,canvasRight.height);
     }else if(state === STATE.CAP_RIGHT){
-        draw_half(ctxLeft, canvasLeft, left_img, left_offset);
-        draw_half(ctxRight, canvasRight, video, right_offset);
+        // both eyes' offsets shift together by the live drag delta,
+        // since the phone is rigid and the anchor point (finger) is fixed in world space
+        draw_half(ctxLeft, canvasLeft, left_img, left_offset + drag_delta_css);
+        draw_half(ctxRight, canvasRight, video, right_offset + drag_delta_css);
     }else{
         live_preview_running = false;
         return;
@@ -236,7 +251,6 @@ function live_preview_loop(){
 }
 
 async function setup_display_then_camera(){
-    // fullscreen + orientation lock first, still inside the click handler's call stack as much as possible
     try{ await document.documentElement.requestFullscreen(); }catch(err){ /*PASS*/ }
     try{ await screen.orientation.lock("landscape"); }catch(err){ /*PASS*/ }
 
@@ -283,7 +297,8 @@ function enter_calib_right(){
 
 function enter_cap_left(){
     state = STATE.CAP_LEFT;
-    set_label("");
+    set_label("轻点右下角\n拍摄左图");
+    drag_delta_css = 0;
     if(!live_preview_running){
         live_preview_running = true;
         requestAnimationFrame(live_preview_loop);
@@ -292,7 +307,8 @@ function enter_cap_left(){
 
 function enter_cap_right(){
     state = STATE.CAP_RIGHT;
-    set_label("");
+    drag_delta_css = 0;
+    set_label("按住右下角滑动手机\n制造视差,满意后松手拍右图");
 }
 
 function enter_show(){
@@ -302,7 +318,7 @@ function enter_show(){
     resize_canvases();
     draw_half(ctxLeft, canvasLeft, left_img, left_offset);
     draw_half(ctxRight, canvasRight, right_img, right_offset);
-    set_corner(`完成  L偏移:${left_offset.toFixed(0)}px R偏移:${right_offset.toFixed(0)}px  (点击重拍,长按重新校准)\n${debug_line()}`);
+    set_corner(`完成  L偏移:${left_offset.toFixed(0)}px R偏移:${right_offset.toFixed(0)}px  (点击重拍,长按重新校准)`);
 }
 
 function on_tap(){
@@ -316,10 +332,6 @@ function on_tap(){
         case STATE.CAP_LEFT:
             left_img = grab_frame_to_canvas();
             enter_cap_right();
-            break;
-        case STATE.CAP_RIGHT:
-            right_img = grab_frame_to_canvas();
-            enter_show();
             break;
         case STATE.SHOW:
             left_img = null;
@@ -337,18 +349,40 @@ function on_long_press(){
 }
 
 let press_start_time = null;
+let press_start_x = 0;
+let press_moved_beyond_tolerance = false;
 
-window.addEventListener("pointerdown", () => {
+window.addEventListener("pointerdown", (e) => {
     press_start_time = performance.now();
+    press_start_x = e.clientX;
+    press_moved_beyond_tolerance = false;
+
     if(state === STATE.CALIB_LEFT || state === STATE.CALIB_RIGHT){
         ensure_canvas_ready();
         sweeping = true;
         sweep_start_time = performance.now();
         requestAnimationFrame(draw_sweep_frame);
+    }else if(state === STATE.CAP_RIGHT){
+        dragging = true;
+        drag_start_x = e.clientX;
+        drag_delta_css = 0;
     }
 });
 
-window.addEventListener("pointerup", () => {
+window.addEventListener("pointermove", (e) => {
+    if(state === STATE.CAP_RIGHT && dragging){
+        // finger stays anchored in world space; phone (and its screen coords)
+        // slides under it. delta is finger position minus its start position.
+        drag_delta_css = e.clientX - drag_start_x;
+    }
+    if(press_start_time !== null){
+        if(Math.abs(e.clientX - press_start_x) > TAP_MOVE_TOLERANCE_PX){
+            press_moved_beyond_tolerance = true;
+        }
+    }
+});
+
+window.addEventListener("pointerup", (e) => {
     if(press_start_time === null) return;
     let held = performance.now() - press_start_time;
     press_start_time = null;
@@ -371,6 +405,16 @@ window.addEventListener("pointerup", () => {
         enter_cap_left();
         return;
     }
+    if(state === STATE.CAP_RIGHT && dragging){
+        dragging = false;
+        // commit the accumulated slide into both eyes' offsets permanently
+        left_offset += drag_delta_css;
+        right_offset += drag_delta_css;
+        drag_delta_css = 0;
+        right_img = grab_frame_to_canvas();
+        enter_show();
+        return;
+    }
 
     if(held >= LONG_PRESS_MS){
         on_long_press();
@@ -382,6 +426,8 @@ window.addEventListener("pointerup", () => {
 window.addEventListener("pointercancel", () => {
     press_start_time = null;
     sweeping = false;
+    dragging = false;
+    drag_delta_css = 0;
 });
 
 window.addEventListener("resize", () => {
