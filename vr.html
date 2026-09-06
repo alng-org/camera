@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>SBS VR Single-Button Test</title>
+<style>
+    html,body{
+        margin:0;
+        padding:0;
+        background:#000;
+        overflow:hidden;
+        width:100%;
+        height:100%;
+        touch-action:none;
+        -webkit-user-select:none;
+        user-select:none;
+    }
+    #video{
+        position:fixed;
+        top:0;
+        left:0;
+        width:100vw;
+        height:100vh;
+        object-fit:cover;
+    }
+    #viewport{
+        position:fixed;
+        top:0;
+        left:0;
+        width:100vw;
+        height:100vh;
+        display:flex;
+    }
+    #viewport canvas{
+        width:50%;
+        height:100%;
+        display:block;
+        background:#000;
+    }
+    #label{
+        position:fixed;
+        top:0;
+        left:0;
+        width:100vw;
+        height:100vh;
+        display:flex;
+        align-items:center;
+        justify-content:center;
+        color:#0f0;
+        font-family:monospace;
+        font-weight:bold;
+        font-size:8vw;
+        text-align:center;
+        pointer-events:none;
+        z-index:5;
+        text-shadow: 0 0 10px #000, 0 0 4px #000;
+    }
+    #corner{
+        position:fixed;
+        bottom:2vh;
+        left:2vw;
+        color:#0f0;
+        font-family:monospace;
+        font-size:2.2vh;
+        z-index:5;
+        pointer-events:none;
+        text-shadow: 0 0 6px #000;
+    }
+    .hidden{
+        display:none !important;
+    }
+</style>
+</head>
+<body>
+
+<video id="video" autoplay muted playsinline></video>
+
+<div id="viewport" class="hidden">
+    <canvas id="canvas_left"></canvas>
+    <canvas id="canvas_right"></canvas>
+</div>
+
+<div id="label">点击开始</div>
+<div id="corner"></div>
+
+<script>
+const STEP = 10;
+const MIN_OFF = -150;
+const MAX_OFF = 150;
+const LONG_PRESS_MS = 600;
+
+const STATE = {
+    START: "START",
+    CAP_LEFT: "CAP_LEFT",
+    CAP_RIGHT: "CAP_RIGHT",
+    ALIGN: "ALIGN",
+    DONE: "DONE"
+};
+
+let state = STATE.START;
+let stream = null;
+let video = document.getElementById("video");
+let label = document.getElementById("label");
+let corner = document.getElementById("corner");
+let viewport = document.getElementById("viewport");
+let canvasLeft = document.getElementById("canvas_left");
+let canvasRight = document.getElementById("canvas_right");
+let ctxLeft = canvasLeft.getContext("2d");
+let ctxRight = canvasRight.getContext("2d");
+
+let left_img = null;
+let right_img = null;
+let right_offset = 0;
+
+function set_label(text){
+    label.innerText = text;
+}
+
+function grab_frame_to_bitmap(){
+    let c = document.createElement("canvas");
+    c.width = video.videoWidth;
+    c.height = video.videoHeight;
+    let ctx = c.getContext("2d");
+    ctx.drawImage(video,0,0,c.width,c.height);
+    return c; // canvas itself acts as drawable image source
+}
+
+function resize_align_canvases(){
+    let dpr = window.devicePixelRatio || 1;
+    for(let c of [canvasLeft, canvasRight]){
+        let rect = c.getBoundingClientRect();
+        c.width = rect.width * dpr;
+        c.height = rect.height * dpr;
+    }
+}
+
+function draw_half(ctx, canvas, src_img, xoffset_px){
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    if(src_img === null) return;
+    let dpr = window.devicePixelRatio || 1;
+    let xoffset = xoffset_px * dpr;
+
+    let sw = src_img.width, sh = src_img.height;
+    let scale = Math.min(canvas.width / sw, canvas.height / sh);
+    let dw = sw * scale;
+    let dh = sh * scale;
+    let dx = (canvas.width - dw) / 2 + xoffset;
+    let dy = (canvas.height - dh) / 2;
+    ctx.drawImage(src_img, 0, 0, sw, sh, dx, dy, dw, dh);
+}
+
+function draw_align(){
+    draw_half(ctxLeft, canvasLeft, left_img, 0);
+    draw_half(ctxRight, canvasRight, right_img, right_offset);
+}
+
+function enter_start(){
+    state = STATE.START;
+    video.classList.remove("hidden");
+    viewport.classList.add("hidden");
+    set_label("点击开始");
+    corner.innerText = "";
+}
+
+function enter_cap_left(){
+    state = STATE.CAP_LEFT;
+    video.classList.remove("hidden");
+    viewport.classList.add("hidden");
+    set_label("点击\n拍摄左图");
+    corner.innerText = "";
+}
+
+function enter_cap_right(){
+    state = STATE.CAP_RIGHT;
+    set_label("点击\n拍摄右图");
+}
+
+function enter_align(){
+    state = STATE.ALIGN;
+    video.classList.add("hidden");
+    viewport.classList.remove("hidden");
+    resize_align_canvases();
+    right_offset = 0;
+    draw_align();
+    set_label("");
+    corner.innerText = `右眼偏移: ${right_offset}px  (点击微调, 长按确认)`;
+}
+
+function enter_done(){
+    state = STATE.DONE;
+    set_label("");
+    corner.innerText = `已确认  偏移=${right_offset}px  (点击重新拍摄)`;
+}
+
+async function start_camera(){
+    try{
+        stream = await navigator.mediaDevices.getUserMedia({
+            audio:false,
+            video:{
+                facingMode:{ exact:"environment" },
+                width:{ ideal:1920 },
+                height:{ ideal:1080 }
+            }
+        });
+        video.srcObject = stream;
+        await video.play();
+    }catch(err){
+        set_label("摄像头错误:\n" + err.message);
+        throw err;
+    }
+
+    document.documentElement.requestFullscreen?.().catch(() => {});
+    try{
+        await screen.orientation?.lock?.("landscape");
+    }catch(err){
+        //PASS, orientation lock not always available
+    }
+}
+
+function on_short_tap(){
+    switch(state){
+        case STATE.START:
+            start_camera().then(() => enter_cap_left()).catch(() => {});
+            break;
+        case STATE.CAP_LEFT:
+            left_img = grab_frame_to_bitmap();
+            enter_cap_right();
+            break;
+        case STATE.CAP_RIGHT:
+            right_img = grab_frame_to_bitmap();
+            enter_align();
+            break;
+        case STATE.ALIGN:
+            right_offset += STEP;
+            if(right_offset > MAX_OFF){
+                right_offset = MIN_OFF;
+            }
+            draw_align();
+            corner.innerText = `右眼偏移: ${right_offset}px  (点击微调, 长按确认)`;
+            break;
+        case STATE.DONE:
+            left_img = null;
+            right_img = null;
+            enter_cap_left();
+            break;
+    }
+}
+
+function on_long_press(){
+    if(state === STATE.ALIGN){
+        enter_done();
+    }
+    // other states: long press has no distinct action
+}
+
+let press_start_time = null;
+let long_press_fired = false;
+
+window.addEventListener("pointerdown", (e) => {
+    press_start_time = performance.now();
+    long_press_fired = false;
+});
+
+window.addEventListener("pointerup", (e) => {
+    if(press_start_time === null) return;
+    let held = performance.now() - press_start_time;
+    press_start_time = null;
+    if(held >= LONG_PRESS_MS){
+        long_press_fired = true;
+        on_long_press();
+    }else{
+        on_short_tap();
+    }
+});
+
+window.addEventListener("pointercancel", () => {
+    press_start_time = null;
+});
+
+window.addEventListener("resize", () => {
+    if(state === STATE.ALIGN || state === STATE.DONE){
+        resize_align_canvases();
+        draw_align();
+    }
+});
+window.addEventListener("orientationchange", () => {
+    setTimeout(() => {
+        if(state === STATE.ALIGN || state === STATE.DONE){
+            resize_align_canvases();
+            draw_align();
+        }
+    }, 200);
+});
+
+enter_start();
+</script>
+</body>
+</html>
