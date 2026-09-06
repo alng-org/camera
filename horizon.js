@@ -9,6 +9,8 @@ class Horizon{
     #rotation_transform;
     #needle;
     #refline;
+    #cx;
+    #cy;
     static #match_tolerance = 1;
 
     static #nop_ref(it,__){
@@ -55,8 +57,46 @@ class Horizon{
 
     #svg_init(){
         const ns = "http://www.w3.org/2000/svg";
-        const cx = 50, cy = 50, r = 40;
-        
+        let box = this.#svg.viewBox.baseVal;
+        this.#cx = box.x + box.width / 2;
+        this.#cy = box.y + box.height / 2;
+        let cx = this.#cx;
+        let cy = this.#cy;
+        let r = Math.min(box.width, box.height) * 0.4;
+
+        let defs = document.createElementNS(ns,"defs");
+        let filter = document.createElementNS(ns,"filter");
+        filter.setAttribute("id","glow");
+        filter.setAttribute("x","-50%");
+        filter.setAttribute("y","-50%");
+        filter.setAttribute("width","200%");
+        filter.setAttribute("height","200%");
+
+        let blur = document.createElementNS(ns,"feGaussianBlur");
+        blur.setAttribute("in","SourceGraphic");
+        blur.setAttribute("stdDeviation","1.5");
+        blur.setAttribute("result","blurred");
+        filter.appendChild(blur);
+
+        let offset = document.createElementNS(ns,"feOffset");
+        offset.setAttribute("in","blurred");
+        offset.setAttribute("dx","0");
+        offset.setAttribute("dy","-1.5");
+        offset.setAttribute("result","glow_offset");
+        filter.appendChild(offset);
+
+        let merge = document.createElementNS(ns,"feMerge");
+        let mergeNode1 = document.createElementNS(ns,"feMergeNode");
+        mergeNode1.setAttribute("in","glow_offset");
+        let mergeNode2 = document.createElementNS(ns,"feMergeNode");
+        mergeNode2.setAttribute("in","SourceGraphic");
+        merge.appendChild(mergeNode1);
+        merge.appendChild(mergeNode2);
+        filter.appendChild(merge);
+
+        defs.appendChild(filter);
+        this.#svg.appendChild(defs);
+
         let bg = document.createElementNS(ns,"circle");
         bg.setAttribute("cx",cx);
         bg.setAttribute("cy",cy);
@@ -65,7 +105,7 @@ class Horizon{
         bg.setAttribute("stroke","white");
         bg.setAttribute("stroke-opacity","0.4");
         this.#svg.appendChild(bg);
-        
+
         this.#refline = document.createElementNS(ns,"line");
         this.#refline.setAttribute("x1",cx - r);
         this.#refline.setAttribute("y1",cy);
@@ -75,7 +115,7 @@ class Horizon{
         this.#refline.setAttribute("stroke-dasharray","4 3");
         this.#refline.style.display = "none";
         this.#svg.appendChild(this.#refline);
-        
+
         this.#needle = document.createElementNS(ns,"line");
         this.#needle.setAttribute("x1",cx - r);
         this.#needle.setAttribute("y1",cy);
@@ -83,8 +123,9 @@ class Horizon{
         this.#needle.setAttribute("y2",cy);
         this.#needle.setAttribute("stroke","white");
         this.#needle.setAttribute("stroke-width","2");
+        this.#needle.setAttribute("filter","url(#glow)");
         this.#svg.appendChild(this.#needle);
-        
+
         let dot = document.createElementNS(ns,"circle");
         dot.setAttribute("cx",cx);
         dot.setAttribute("cy",cy);
@@ -93,51 +134,37 @@ class Horizon{
         this.#svg.appendChild(dot);
     }
     
-    static #min_diff(angle,ref_angle){
-        let a_candidates = (angle === 0) ? [0,180] : [angle];
-        let r_candidates = (ref_angle === 0) ? [0,180] : [ref_angle];
-        let best = Infinity;
-        for(let a of a_candidates){
-            for(let r of r_candidates){
-                best = Math.min(best, Math.abs(a - r));
-            }
-        }
-        return best;
-    }
-    
     #svg_update(angle,ref_angle){
-        const cx = 50, cy = 50;
+         let cx = this.#cx;
+         let cy = this.#cy;
         
-        if(angle === null){
-            this.#prepared_to_show = false;
-            return;
-        }
-        this.#prepared_to_show = true;
-        
-        this.#needle.setAttribute(
-            "transform",
+         if(angle === null){
+             this.#prepared_to_show = false;
+             return;
+         }
+         this.#prepared_to_show = true;
+
+         this.#needle.setAttribute(
+              "transform",
             `rotate(${-angle} ${cx} ${cy})`
-        );
-        
-        if(ref_angle === null){
-            this.#refline.style.display = "none";
-            this.#needle.setAttribute("stroke","white");
-            return;
+         );
+
+         if(ref_angle === null){
+             this.#refline.style.display = "none";
+             this.#needle.setAttribute("stroke","white");
+             return;
         }
-        
+
         this.#refline.style.display = "";
         this.#refline.setAttribute(
             "transform",
             `rotate(${-ref_angle} ${cx} ${cy})`
         );
-        
-        let involves_zero = (angle === 0 || ref_angle === 0);
-        let T = Horizon.#min_diff(angle,ref_angle);
-        
-        if(T <= Horizon.#match_tolerance && !involves_zero){
+
+        let T = Math.abs(angle - ref_angle);
+
+        if(T <= Horizon.#match_tolerance){
             this.#needle.setAttribute("stroke","#00e676");
-        }else if(T <= Horizon.#match_tolerance && involves_zero){
-            this.#needle.setAttribute("stroke","#ffd600");
         }else{
             this.#needle.setAttribute("stroke","white");
         }
