@@ -233,7 +233,7 @@ class Horizon{
            case 180:
                this.#rotation_transform = ({beta,gamma}) => {
                    if(beta !== null && gamma !== null && -180 <= beta && beta <= 0){
-                       return beta + 180;
+                       return -beta;
                    }else{
                        return null;
                    }
