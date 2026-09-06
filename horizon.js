@@ -74,13 +74,25 @@ class Horizon{
         filter.setAttribute("height", box.height*1.4);
 
         let blur = document.createElementNS(ns,"feGaussianBlur");
-        blur.setAttribute("in","SourceGraphic");
-        blur.setAttribute("stdDeviation","1.5");
-        blur.setAttribute("result","blurred");
+        blur.setAttribute("in","SourceAlpha");
+        blur.setAttribute("stdDeviation","2");
+        blur.setAttribute("result","blurred_alpha");
         filter.appendChild(blur);
 
+        let flood = document.createElementNS(ns,"feFlood");
+        flood.setAttribute("flood-color","#00e5ff");
+        flood.setAttribute("result","glow_color");
+        filter.appendChild(flood);
+
+        let composite = document.createElementNS(ns,"feComposite");
+        composite.setAttribute("in","glow_color");
+        composite.setAttribute("in2","blurred_alpha");
+        composite.setAttribute("operator","in");
+        composite.setAttribute("result","colored_glow");
+        filter.appendChild(composite);
+
         let offset = document.createElementNS(ns,"feOffset");
-        offset.setAttribute("in","blurred");
+        offset.setAttribute("in","colored_glow");
         offset.setAttribute("dx","0");
         offset.setAttribute("dy","-1.5");
         offset.setAttribute("result","glow_offset");
